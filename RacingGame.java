@@ -62,13 +62,13 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int maxSpeed = 223;
     private int acceleration = 2;
     private int brakingForce = 3;
-    private int naturalDeceleration = 1;
+    private double naturalDeceleration = 0.2;
     private int difficulty = 1;
     private int frameCount = 0;
     private long lastPowerUpTime = 0;
     
     // Player stats
-    private int nitroFuel = 100;
+    private int nitroFuel = 120;
     private int lives = 3;
     private boolean hasShield = false;
     private int shieldDuration = 0;
@@ -175,7 +175,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             nitroFuel--;
             createExhaustParticles();
         } else {
-            if (nitroFuel < 100 && !nitroPressed) {
+            if (nitroFuel < 120 && !nitroPressed) {
                 nitroFuel = Math.min(100, nitroFuel + 1);
             }
         }
@@ -520,13 +520,13 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         // Nitro gauge
-        int nitroX = SCREEN_WIDTH - 160;
+        int nitroX = SCREEN_WIDTH - 130;
         int nitroY = 20;
         g2d.setColor(new Color(0, 0, 0, 150));
-        g2d.fillRoundRect(nitroX - 5, nitroY - 5, 110, 30, 10, 10);
+        g2d.fillRoundRect(nitroX - 5, nitroY - 5, 130, 30, 10, 10);
         
         g2d.setColor(Color.GRAY);
-        g2d.fillRect(nitroX, nitroY, 100, 20);
+        g2d.fillRect(nitroX, nitroY, 120, 20);
         
         Color nitroColor;
         if (nitroFuel > 50) nitroColor = Color.BLUE;
@@ -534,11 +534,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         else nitroColor = Color.RED;
         
         g2d.setColor(nitroColor);
-        g2d.fillRect(nitroX, nitroY, nitroFuel, 20);
+        g2d.fillRect(nitroX, nitroY, (int)(nitroFuel * 1.2), 20);
         
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Arial", Font.BOLD, 14));
-        g2d.drawString("NITRO", nitroX + 25, nitroY + 15);
+        g2d.drawString("NITRO", nitroX + 38, nitroY + 15);
         
         // Shield indicator
         if (hasShield) {
