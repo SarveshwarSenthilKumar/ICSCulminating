@@ -53,6 +53,10 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private Timer gameTimer;
     private boolean gameRunning = false;
     private boolean gameOver = false;
+
+    // Pause boolean
+    private boolean paused = false;
+
     private int score = 0;
     private int speed = 0;
     private int maxSpeed = 223;
@@ -592,6 +596,16 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             case KeyEvent.VK_SHIFT:
             case KeyEvent.VK_SPACE:
                 nitroPressed = true;
+                break;
+            case KeyEvent.VK_P:
+                if (paused){
+                    gameRunning = true;
+                    gameTimer.start();
+                }
+                else{
+                    gameRunning = false;
+                    gameTimer.stop();
+                }
                 break;
             case KeyEvent.VK_ENTER:
                 if (gameOver) {
