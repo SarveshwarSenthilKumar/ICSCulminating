@@ -8,3 +8,5 @@ Add score saving system
 Add music
 Add instructions of how to play to the menu
 Make it so you cannot move with nitro
+Fix spawning in a line powerups
+Fix moving backwards

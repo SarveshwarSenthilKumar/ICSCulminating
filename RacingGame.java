@@ -58,7 +58,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private boolean paused = false;
 
     private int score = 0;
-    private int speed = 0;
+    private int speed = 12;
     private int maxSpeed = 223;
     private int acceleration = 2;
     private int brakingForce = 3;
@@ -122,7 +122,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         gameRunning = true;
         gameOver = false;
         score = 0;
-        speed = 0;
+        speed = 12;
         lives = 3;
         nitroFuel = 100;
         difficulty = 1;
@@ -162,11 +162,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         if (downPressed && speed > 0) {
             speed -= brakingForce;
-            if (speed < 0) speed = 0;
+            if (speed < 12) speed = 12;
         }
         if (!upPressed && !downPressed && speed > 0) {
             speed -= naturalDeceleration;
-            if (speed < 0) speed = 0;
+            if (speed < 12) speed = 12;
         }
         
         // Nitro boost
