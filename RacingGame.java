@@ -55,7 +55,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private boolean gameOver = false;
     private int score = 0;
     private int speed = 0;
-    private int maxSpeed = 300;
+    private int maxSpeed = 223;
     private int acceleration = 2;
     private int brakingForce = 3;
     private int naturalDeceleration = 1;
@@ -141,6 +141,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             cameraShake *= 0.9f;
             if (cameraShake < 0.1f) cameraShake = 0;
         }
+
+        // Slow down if not on nitro
+        if (speed > maxSpeed && !nitroPressed) {
+            speed -= 2;
+        }
         
         // Update speed
         if (upPressed && speed < maxSpeed) {
@@ -156,8 +161,8 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         // Nitro boost
-        if (nitroPressed && nitroFuel > 0 && speed < maxSpeed * 1.5) {
-            speed += 5;
+        if (nitroPressed && nitroFuel > 0 && speed < maxSpeed * 3) {
+            speed += 2;
             nitroFuel--;
             createExhaustParticles();
         } else {
