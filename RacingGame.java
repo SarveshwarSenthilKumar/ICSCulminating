@@ -142,8 +142,13 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             if (cameraShake < 0.1f) cameraShake = 0;
         }
 
+        boolean ifSpeed = false;
+        if (nitroPressed && nitroFuel > 0){
+            ifSpeed = true;
+        }
+
         // Slow down if not on nitro
-        if (speed > maxSpeed && !nitroPressed) {
+        if (speed > maxSpeed && !ifSpeed ) {
             speed -= 2;
         }
         
@@ -219,7 +224,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         // Increase difficulty
-        if (frameCount % 1800 == 0) { // Every 30 seconds
+        if (frameCount % 300 == 0) { // Every 5 seconds
             difficulty = Math.min(20, difficulty + 1);
         }
         
