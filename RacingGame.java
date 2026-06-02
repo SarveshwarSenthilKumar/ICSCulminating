@@ -37,9 +37,9 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private static final int SCREEN_HEIGHT = 700;
     
     // Road properties
-    private static final int ROAD_WIDTH = 500;
+    private static final int ROAD_WIDTH = 600;
     private static final int ROAD_X = (SCREEN_WIDTH - ROAD_WIDTH) / 2;
-    private static final int LANE_COUNT = 3;
+    private static final int LANE_COUNT = 8;
     private static final int LANE_WIDTH = ROAD_WIDTH / LANE_COUNT;
     
     // Game objects
@@ -625,7 +625,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
 // Player car class
 class PlayerCar {
     double x, y;
-    int width = 50;
+    int width = 70;
     int height = 90;
     Color mainColor = new Color(220, 20, 60); // Crimson
     Color accentColor = new Color(255, 215, 0); // Gold
@@ -696,7 +696,7 @@ class PlayerCar {
 // Opponent car class
 class OpponentCar {
     double x, y;
-    int width = 50;
+    int width = 70;
     int height = 90;
     int lane;
     double baseSpeed;
