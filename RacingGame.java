@@ -4,365 +4,475 @@ import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Random;
 
-public class RacingGame extends JPanel implements ActionListener, KeyListener {
-
-    final int WIDTH = 800;
-    final int HEIGHT = 700;
-
-    Timer timer;
-
-    PlayerCar player;
-
-    ArrayList<TrafficCar> traffic = new ArrayList<>();
-
-    Random rand = new Random();
-
-    boolean left;
-    boolean right;
-    boolean up;
-    boolean down;
-
-    int roadOffset = 0;
-
-    int score = 0;
-    int speed = 8;
-
-    boolean gameOver = false;
-
+public class RacingGame extends JFrame {
+    private static final int WINDOW_WIDTH = 800;
+    private static final int WINDOW_HEIGHT = 600;
+    private static final int ROAD_WIDTH = 400;
+    private static final int LANE_WIDTH = ROAD_WIDTH / 3;
+    private static final int CAR_WIDTH = 50;
+    private static final int CAR_HEIGHT = 80;
+    
+    private GamePanel gamePanel;
+    private PlayerCar playerCar;
+    private ArrayList<TrafficCar> trafficCars;
+    private Random random;
+    
+    private int score;
+    private int highScore;
+    private int gameSpeed;
+    private boolean gameOver;
+    private boolean gameStarted;
+    private boolean paused;
+    
+    private Timer gameTimer;
+    private Timer trafficTimer;
+    
     public RacingGame() {
-
-        setPreferredSize(new Dimension(WIDTH, HEIGHT));
-        setBackground(Color.GRAY);
-
-        player = new PlayerCar(370, 550);
-
-        addKeyListener(this);
-        setFocusable(true);
-
-        for (int i = 0; i < 6; i++) {
-            spawnCar(-i * 150);
-        }
-
-        timer = new Timer(16, this);
-        timer.start();
-    }
-
-    public void spawnCar(int y) {
-
-        int lane = rand.nextInt(3);
-
-        int x;
-
-        if (lane == 0)
-            x = 250;
-        else if (lane == 1)
-            x = 370;
-        else
-            x = 490;
-
-        traffic.add(new TrafficCar(x, y));
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-
-        if (!gameOver) {
-
-            updateGame();
-
-        }
-
-        repaint();
-    }
-
-    private void updateGame() {
-
-        score++;
-
-        if (score % 500 == 0) {
-            speed++;
-        }
-
-        roadOffset += speed;
-
-        if (roadOffset >= 40)
-            roadOffset = 0;
-
-        player.update();
-
-        for (TrafficCar car : traffic) {
-
-            car.y += speed;
-
-            if (car.y > HEIGHT + 100) {
-
-                car.y = -200;
-
-                int lane = rand.nextInt(3);
-
-                if (lane == 0)
-                    car.x = 250;
-                else if (lane == 1)
-                    car.x = 370;
-                else
-                    car.x = 490;
-            }
-
-            if (player.getBounds().intersects(car.getBounds())) {
-                gameOver = true;
-            }
-        }
-    }
-
-    @Override
-    protected void paintComponent(Graphics g) {
-
-        super.paintComponent(g);
-
-        Graphics2D g2 = (Graphics2D) g;
-
-        drawRoad(g2);
-
-        for (TrafficCar car : traffic) {
-            car.draw(g2);
-        }
-
-        player.draw(g2);
-
-        g2.setColor(Color.WHITE);
-        g2.setFont(new Font("Arial", Font.BOLD, 24));
-        g2.drawString("Score: " + score, 20, 40);
-
-        g2.drawString("Speed: " + speed, 20, 80);
-
-        if (gameOver) {
-
-            g2.setColor(Color.RED);
-            g2.setFont(new Font("Arial", Font.BOLD, 50));
-
-            g2.drawString("GAME OVER", 240, 300);
-
-            g2.setFont(new Font("Arial", Font.BOLD, 24));
-            g2.drawString("Press R to Restart", 290, 360);
-        }
-    }
-
-    private void drawRoad(Graphics2D g2) {
-
-        g2.setColor(new Color(50, 50, 50));
-        g2.fillRect(200, 0, 400, HEIGHT);
-
-        g2.setColor(Color.WHITE);
-
-        for (int y = -40; y < HEIGHT; y += 80) {
-
-            g2.fillRect(395, y + roadOffset, 10, 40);
-        }
-
-        g2.setColor(Color.YELLOW);
-
-        g2.fillRect(200, 0, 10, HEIGHT);
-        g2.fillRect(590, 0, 10, HEIGHT);
-    }
-
-    private void restartGame() {
-
-        player.x = 370;
-        player.y = 550;
-
+        setTitle("Hill Climb Racing");
+        setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(false);
+        setLocationRelativeTo(null);
+        
+        random = new Random();
+        trafficCars = new ArrayList<>();
         score = 0;
-        speed = 8;
-
-        traffic.clear();
-
-        for (int i = 0; i < 6; i++) {
-            spawnCar(-i * 150);
-        }
-
+        highScore = 0;
+        gameSpeed = 5;
         gameOver = false;
+        gameStarted = false;
+        paused = false;
+        
+        playerCar = new PlayerCar(WINDOW_WIDTH / 2 - CAR_WIDTH / 2, WINDOW_HEIGHT - CAR_HEIGHT - 20);
+        
+        gamePanel = new GamePanel();
+        add(gamePanel);
+        
+        setupControls();
+        
+        gameTimer = new Timer(20, e -> updateGame());
+        trafficTimer = new Timer(2000, e -> spawnTrafficCar());
+        
+        setVisible(true);
     }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-
-        int key = e.getKeyCode();
-
-        if (key == KeyEvent.VK_LEFT)
-            left = true;
-
-        if (key == KeyEvent.VK_RIGHT)
-            right = true;
-
-        if (key == KeyEvent.VK_UP)
-            up = true;
-
-        if (key == KeyEvent.VK_DOWN)
-            down = true;
-
-        if (key == KeyEvent.VK_R && gameOver) {
-            restartGame();
+    
+    private void setupControls() {
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (!gameStarted) {
+                    if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        startGame();
+                    }
+                    return;
+                }
+                
+                if (gameOver) {
+                    if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        resetGame();
+                    }
+                    return;
+                }
+                
+                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    playerCar.moveLeft();
+                } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    playerCar.moveRight();
+                } else if (e.getKeyCode() == KeyEvent.VK_P) {
+                    togglePause();
+                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                    gameSpeed = Math.min(gameSpeed + 1, 15);
+                } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                    gameSpeed = Math.max(gameSpeed - 1, 3);
+                }
+            }
+            
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_LEFT || e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    playerCar.stopMoving();
+                }
+            }
+        });
+    }
+    
+    private void startGame() {
+        gameStarted = true;
+        gameOver = false;
+        gameTimer.start();
+        trafficTimer.start();
+    }
+    
+    private void resetGame() {
+        score = 0;
+        gameSpeed = 5;
+        gameOver = false;
+        trafficCars.clear();
+        playerCar.resetPosition();
+        gameTimer.start();
+        trafficTimer.start();
+    }
+    
+    private void togglePause() {
+        paused = !paused;
+        if (paused) {
+            gameTimer.stop();
+            trafficTimer.stop();
+        } else {
+            gameTimer.start();
+            trafficTimer.start();
         }
-
-        player.left = left;
-        player.right = right;
-        player.up = up;
-        player.down = down;
     }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-
-        int key = e.getKeyCode();
-
-        if (key == KeyEvent.VK_LEFT)
-            left = false;
-
-        if (key == KeyEvent.VK_RIGHT)
-            right = false;
-
-        if (key == KeyEvent.VK_UP)
-            up = false;
-
-        if (key == KeyEvent.VK_DOWN)
-            down = false;
-
-        player.left = left;
-        player.right = right;
-        player.up = up;
-        player.down = down;
+    
+    private void updateGame() {
+        if (gameOver || paused) return;
+        
+        playerCar.update();
+        
+        // Update traffic cars
+        for (int i = trafficCars.size() - 1; i >= 0; i--) {
+            TrafficCar car = trafficCars.get(i);
+            car.update(gameSpeed);
+            
+            // Check collision
+            if (checkCollision(playerCar, car)) {
+                gameOver = true;
+                gameTimer.stop();
+                trafficTimer.stop();
+                if (score > highScore) {
+                    highScore = score;
+                }
+            }
+            
+            // Remove cars that have gone off screen
+            if (car.getY() > WINDOW_HEIGHT) {
+                trafficCars.remove(i);
+                score += 10;
+                
+                // Increase difficulty
+                if (score % 100 == 0) {
+                    gameSpeed = Math.min(gameSpeed + 1, 15);
+                    trafficTimer.setDelay(Math.max(trafficTimer.getDelay() - 100, 800));
+                }
+            }
+        }
+        
+        gamePanel.repaint();
     }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
+    
+    private void spawnTrafficCar() {
+        if (gameOver || paused) return;
+        
+        int lane = random.nextInt(3);
+        int x = WINDOW_WIDTH / 2 - ROAD_WIDTH / 2 + lane * LANE_WIDTH + (LANE_WIDTH - CAR_WIDTH) / 2;
+        
+        // Check if lane is clear
+        for (TrafficCar car : trafficCars) {
+            if (car.getY() < CAR_HEIGHT + 50 && Math.abs(car.getX() - x) < LANE_WIDTH) {
+                return; // Lane not clear
+            }
+        }
+        
+        trafficCars.add(new TrafficCar(x, -CAR_HEIGHT));
     }
-
+    
+    private boolean checkCollision(PlayerCar player, TrafficCar traffic) {
+        Rectangle playerRect = new Rectangle(player.getX(), player.getY(), CAR_WIDTH, CAR_HEIGHT);
+        Rectangle trafficRect = new Rectangle(traffic.getX(), traffic.getY(), CAR_WIDTH, CAR_HEIGHT);
+        return playerRect.intersects(trafficRect);
+    }
+    
+    private class GamePanel extends JPanel {
+        private int roadOffset = 0;
+        
+        public GamePanel() {
+            setPreferredSize(new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT));
+            setFocusable(true);
+        }
+        
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            // Draw background
+            g2d.setColor(new Color(34, 139, 34));
+            g2d.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+            
+            // Draw grass
+            g2d.setColor(new Color(50, 205, 50));
+            g2d.fillRect(0, 0, WINDOW_WIDTH / 2 - ROAD_WIDTH / 2, WINDOW_HEIGHT);
+            g2d.fillRect(WINDOW_WIDTH / 2 + ROAD_WIDTH / 2, 0, WINDOW_WIDTH / 2 - ROAD_WIDTH / 2, WINDOW_HEIGHT);
+            
+            // Draw road
+            g2d.setColor(new Color(80, 80, 80));
+            g2d.fillRect(WINDOW_WIDTH / 2 - ROAD_WIDTH / 2, 0, ROAD_WIDTH, WINDOW_HEIGHT);
+            
+            // Draw road borders
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(WINDOW_WIDTH / 2 - ROAD_WIDTH / 2 - 5, 0, 5, WINDOW_HEIGHT);
+            g2d.fillRect(WINDOW_WIDTH / 2 + ROAD_WIDTH / 2, 0, 5, WINDOW_HEIGHT);
+            
+            // Draw lane markings
+            if (!paused) {
+                roadOffset = (roadOffset + gameSpeed) % 40;
+            }
+            g2d.setColor(Color.WHITE);
+            for (int i = 0; i < WINDOW_HEIGHT + 40; i += 40) {
+                int y = i + roadOffset - 40;
+                if (y >= 0 && y < WINDOW_HEIGHT) {
+                    g2d.fillRect(WINDOW_WIDTH / 2 - LANE_WIDTH / 2 - 2, y, 4, 20);
+                    g2d.fillRect(WINDOW_WIDTH / 2 + LANE_WIDTH / 2 - 2, y, 4, 20);
+                }
+            }
+            
+            // Draw traffic cars
+            for (TrafficCar car : trafficCars) {
+                drawCar(g2d, car.getX(), car.getY(), car.getColor(), false);
+            }
+            
+            // Draw player car
+            drawCar(g2d, playerCar.getX(), playerCar.getY(), Color.RED, true);
+            
+            // Draw HUD
+            drawHUD(g2d);
+            
+            // Draw start screen
+            if (!gameStarted) {
+                drawStartScreen(g2d);
+            }
+            
+            // Draw game over screen
+            if (gameOver) {
+                drawGameOverScreen(g2d);
+            }
+            
+            // Draw pause screen
+            if (paused) {
+                drawPauseScreen(g2d);
+            }
+        }
+        
+        private void drawCar(Graphics2D g2d, int x, int y, Color color, boolean isPlayer) {
+            // Car body
+            g2d.setColor(color);
+            g2d.fillRect(x, y, CAR_WIDTH, CAR_HEIGHT);
+            
+            // Car roof
+            g2d.setColor(color.darker());
+            g2d.fillRect(x + 5, y + 15, CAR_WIDTH - 10, CAR_HEIGHT - 35);
+            
+            // Windshield
+            g2d.setColor(new Color(135, 206, 250));
+            if (isPlayer) {
+                g2d.fillRect(x + 8, y + 20, CAR_WIDTH - 16, 15);
+            } else {
+                g2d.fillRect(x + 8, y + CAR_HEIGHT - 35, CAR_WIDTH - 16, 15);
+            }
+            
+            // Wheels
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(x - 5, y + 10, 8, 15);
+            g2d.fillRect(x + CAR_WIDTH - 3, y + 10, 8, 15);
+            g2d.fillRect(x - 5, y + CAR_HEIGHT - 25, 8, 15);
+            g2d.fillRect(x + CAR_WIDTH - 3, y + CAR_HEIGHT - 25, 8, 15);
+            
+            // Headlights/taillights
+            if (isPlayer) {
+                g2d.setColor(Color.YELLOW);
+                g2d.fillRect(x + 5, y + CAR_HEIGHT - 5, 10, 5);
+                g2d.fillRect(x + CAR_WIDTH - 15, y + CAR_HEIGHT - 5, 10, 5);
+            } else {
+                g2d.setColor(Color.RED);
+                g2d.fillRect(x + 5, y + CAR_HEIGHT - 5, 10, 5);
+                g2d.fillRect(x + CAR_WIDTH - 15, y + CAR_HEIGHT - 5, 10, 5);
+            }
+        }
+        
+        private void drawHUD(Graphics2D g2d) {
+            // Score panel
+            g2d.setColor(new Color(0, 0, 0, 150));
+            g2d.fillRect(10, 10, 200, 80);
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 16));
+            g2d.drawString("Score: " + score, 20, 35);
+            g2d.drawString("High Score: " + highScore, 20, 55);
+            g2d.drawString("Speed: " + gameSpeed, 20, 75);
+            
+            // Controls hint
+            g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+            g2d.drawString("← → : Move | P : Pause", 10, WINDOW_HEIGHT - 10);
+        }
+        
+        private void drawStartScreen(Graphics2D g2d) {
+            g2d.setColor(new Color(0, 0, 0, 200));
+            g2d.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+            
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 48));
+            FontMetrics fm = g2d.getFontMetrics();
+            String title = "HILL CLIMB RACING";
+            g2d.drawString(title, (WINDOW_WIDTH - fm.stringWidth(title)) / 2, WINDOW_HEIGHT / 3);
+            
+            g2d.setFont(new Font("Arial", Font.PLAIN, 24));
+            fm = g2d.getFontMetrics();
+            String instruction = "Press ENTER to Start";
+            g2d.drawString(instruction, (WINDOW_WIDTH - fm.stringWidth(instruction)) / 2, WINDOW_HEIGHT / 2);
+            
+            g2d.setFont(new Font("Arial", Font.PLAIN, 16));
+            String controls = "Controls: ← → to move, ↑ ↓ to change speed, P to pause";
+            fm = g2d.getFontMetrics();
+            g2d.drawString(controls, (WINDOW_WIDTH - fm.stringWidth(controls)) / 2, WINDOW_HEIGHT / 2 + 50);
+        }
+        
+        private void drawGameOverScreen(Graphics2D g2d) {
+            g2d.setColor(new Color(0, 0, 0, 200));
+            g2d.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+            
+            g2d.setColor(Color.RED);
+            g2d.setFont(new Font("Arial", Font.BOLD, 48));
+            FontMetrics fm = g2d.getFontMetrics();
+            String gameOver = "GAME OVER";
+            g2d.drawString(gameOver, (WINDOW_WIDTH - fm.stringWidth(gameOver)) / 2, WINDOW_HEIGHT / 3);
+            
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 32));
+            fm = g2d.getFontMetrics();
+            String scoreText = "Score: " + score;
+            g2d.drawString(scoreText, (WINDOW_WIDTH - fm.stringWidth(scoreText)) / 2, WINDOW_HEIGHT / 2);
+            
+            String highScoreText = "High Score: " + highScore;
+            g2d.drawString(highScoreText, (WINDOW_WIDTH - fm.stringWidth(highScoreText)) / 2, WINDOW_HEIGHT / 2 + 40);
+            
+            g2d.setFont(new Font("Arial", Font.PLAIN, 24));
+            fm = g2d.getFontMetrics();
+            String restart = "Press ENTER to Restart";
+            g2d.drawString(restart, (WINDOW_WIDTH - fm.stringWidth(restart)) / 2, WINDOW_HEIGHT / 2 + 100);
+        }
+        
+        private void drawPauseScreen(Graphics2D g2d) {
+            g2d.setColor(new Color(0, 0, 0, 150));
+            g2d.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+            
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 48));
+            FontMetrics fm = g2d.getFontMetrics();
+            String pause = "PAUSED";
+            g2d.drawString(pause, (WINDOW_WIDTH - fm.stringWidth(pause)) / 2, WINDOW_HEIGHT / 2);
+            
+            g2d.setFont(new Font("Arial", Font.PLAIN, 24));
+            fm = g2d.getFontMetrics();
+            String resume = "Press P to Resume";
+            g2d.drawString(resume, (WINDOW_WIDTH - fm.stringWidth(resume)) / 2, WINDOW_HEIGHT / 2 + 50);
+        }
+    }
+    
+    private class PlayerCar {
+        private int x;
+        private int y;
+        private int speed;
+        private boolean movingLeft;
+        private boolean movingRight;
+        
+        public PlayerCar(int x, int y) {
+            this.x = x;
+            this.y = y;
+            this.speed = 8;
+            this.movingLeft = false;
+            this.movingRight = false;
+        }
+        
+        public void update() {
+            if (movingLeft) {
+                x -= speed;
+                // Keep on road
+                if (x < WINDOW_WIDTH / 2 - ROAD_WIDTH / 2) {
+                    x = WINDOW_WIDTH / 2 - ROAD_WIDTH / 2;
+                }
+            }
+            if (movingRight) {
+                x += speed;
+                // Keep on road
+                if (x > WINDOW_WIDTH / 2 + ROAD_WIDTH / 2 - CAR_WIDTH) {
+                    x = WINDOW_WIDTH / 2 + ROAD_WIDTH / 2 - CAR_WIDTH;
+                }
+            }
+        }
+        
+        public void moveLeft() {
+            movingLeft = true;
+        }
+        
+        public void moveRight() {
+            movingRight = true;
+        }
+        
+        public void stopMoving() {
+            movingLeft = false;
+            movingRight = false;
+        }
+        
+        public void resetPosition() {
+            x = WINDOW_WIDTH / 2 - CAR_WIDTH / 2;
+            movingLeft = false;
+            movingRight = false;
+        }
+        
+        public int getX() {
+            return x;
+        }
+        
+        public int getY() {
+            return y;
+        }
+    }
+    
+    private class TrafficCar {
+        private int x;
+        private int y;
+        private Color color;
+        private int speed;
+        
+        public TrafficCar(int x, int y) {
+            this.x = x;
+            this.y = y;
+            this.speed = 3 + random.nextInt(3);
+            this.color = getRandomColor();
+        }
+        
+        public void update(int gameSpeed) {
+            y += gameSpeed - speed;
+            if (y < -CAR_HEIGHT) {
+                y = -CAR_HEIGHT;
+            }
+        }
+        
+        private Color getRandomColor() {
+            Color[] colors = {
+                Color.BLUE, Color.GREEN, Color.ORANGE, 
+                Color.PINK, Color.CYAN, Color.MAGENTA,
+                new Color(128, 0, 128), new Color(255, 140, 0)
+            };
+            return colors[random.nextInt(colors.length)];
+        }
+        
+        public int getX() {
+            return x;
+        }
+        
+        public int getY() {
+            return y;
+        }
+        
+        public Color getColor() {
+            return color;
+        }
+    }
+    
     public static void main(String[] args) {
-
-        JFrame frame = new JFrame("Java Swing Racing Game");
-
-        RacingGame game = new RacingGame();
-
-        frame.add(game);
-
-        frame.pack();
-
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
-        frame.setResizable(false);
-        frame.setVisible(true);
-    }
-}
-
-class PlayerCar {
-
-    int x;
-    int y;
-
-    int width = 60;
-    int height = 100;
-
-    boolean left;
-    boolean right;
-    boolean up;
-    boolean down;
-
-    int speed = 7;
-
-    public PlayerCar(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    public void update() {
-
-        if (left)
-            x -= speed;
-
-        if (right)
-            x += speed;
-
-        if (up)
-            y -= speed;
-
-        if (down)
-            y += speed;
-
-        if (x < 210)
-            x = 210;
-
-        if (x > 530)
-            x = 530;
-
-        if (y < 0)
-            y = 0;
-
-        if (y > 600)
-            y = 600;
-    }
-
-    public void draw(Graphics2D g2) {
-
-        g2.setColor(Color.BLUE);
-
-        g2.fillRoundRect(x, y, width, height, 15, 15);
-
-        g2.setColor(Color.BLACK);
-
-        g2.fillRect(x + 8, y + 15, 15, 25);
-        g2.fillRect(x + 37, y + 15, 15, 25);
-
-        g2.fillRect(x + 8, y + 65, 15, 25);
-        g2.fillRect(x + 37, y + 65, 15, 25);
-
-        g2.setColor(Color.CYAN);
-
-        g2.fillRect(x + 10, y + 10, 40, 20);
-    }
-
-    public Rectangle getBounds() {
-        return new Rectangle(x, y, width, height);
-    }
-}
-
-class TrafficCar {
-
-    int x;
-    int y;
-
-    int width = 60;
-    int height = 100;
-
-    Color color;
-
-    Random rand = new Random();
-
-    public TrafficCar(int x, int y) {
-
-        this.x = x;
-        this.y = y;
-
-        color = new Color(
-                rand.nextInt(255),
-                rand.nextInt(255),
-                rand.nextInt(255));
-    }
-
-    public void draw(Graphics2D g2) {
-
-        g2.setColor(color);
-
-        g2.fillRoundRect(x, y, width, height, 15, 15);
-
-        g2.setColor(Color.BLACK);
-
-        g2.fillRect(x + 8, y + 15, 15, 25);
-        g2.fillRect(x + 37, y + 15, 15, 25);
-
-        g2.fillRect(x + 8, y + 65, 15, 25);
-        g2.fillRect(x + 37, y + 65, 15, 25);
-    }
-
-    public Rectangle getBounds() {
-        return new Rectangle(x, y, width, height);
+        SwingUtilities.invokeLater(() -> {
+            new RacingGame();
+        });
     }
 }
