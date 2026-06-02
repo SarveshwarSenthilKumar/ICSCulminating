@@ -1,21 +1,21 @@
-# Hill Climb Racing - Java Swing Version
+# Angry Birds - Java Swing Version
 
-A 2D physics-based driving game built with Java Swing.
+A 2D physics-based Angry Birds clone built with Java Swing.
 
 ## Features
 
-- **Arrow Key Controls**: Use arrow keys to control the car
-- **Procedural Terrain**: Randomly generated hilly terrain
-- **Physics Simulation**: Gravity, acceleration, friction, and rotation
-- **Camera Tracking**: Camera follows the car as it progresses
-- **Score System**: Track your distance traveled
-- **Game Over Detection**: Detects when car falls off the terrain
+- **Slingshot Mechanics**: Click and drag on the slingshot to launch birds
+- **Physics Simulation**: Gravity, collision detection, and momentum
+- **Destructible Structures**: Blocks that can be destroyed by bird impacts
+- **Pig Targets**: Eliminate all pigs to complete the level
+- **Score System**: Earn points for destroying pigs
+- **Multiple Birds**: Limited number of birds per level
 
 ## Controls
 
-- **Right Arrow / Up Arrow**: Accelerate forward
-- **Left Arrow**: Brake/Reverse
-- **R**: Restart game (when game over)
+- **Click and Drag**: Pull back on the slingshot to aim
+- **Release**: Launch the bird
+- The further you pull back, the more power the launch has
 
 ## How to Run
 
@@ -31,12 +31,17 @@ A 2D physics-based driving game built with Java Swing.
 
 ## Game Mechanics
 
-- The car follows the terrain using physics simulation
-- Gravity pulls the car down
-- Acceleration moves the car forward based on the terrain angle
-- When in the air, you can rotate the car using acceleration/brake
-- If the car falls off the screen, the game ends
-- Score is based on distance traveled
+- Click on the slingshot and drag backward to aim
+- Release to launch the bird toward the structure
+- Birds follow realistic physics with gravity
+- Hit blocks to damage them and potentially destroy the structure
+- Destroy all pigs to complete the level
+- You have 5 birds to complete the level
+- If you run out of birds before destroying all pigs, game over
+
+## Scoring
+
+- **100 points** per pig destroyed
 
 ## Requirements
 
