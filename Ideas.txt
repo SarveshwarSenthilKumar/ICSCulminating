@@ -1,0 +1,9 @@
+Add a middle marker with separating traffic
+Add oncoming traffic
+Update the speed of the opponents depending on own speed
+Add traffic jams and add multiple cars on screen
+Add a pause feature
+Add a proper menu
+Add score saving system
+Add music
+Add instructions of how to play to the menu
