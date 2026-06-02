@@ -290,8 +290,12 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void spawnPowerUp() {
         int lane = random.nextInt(LANE_COUNT);
         int x = ROAD_X + lane * LANE_WIDTH + LANE_WIDTH / 2;
+        
+        // Added random height for powerup
+        int y = random.nextInt(SCREEN_HEIGHT-100);
+
         int type = random.nextInt(3); // 0: Nitro, 1: Shield, 2: Extra Life
-        powerUps.add(new PowerUp(x - 15, -30, type));
+        powerUps.add(new PowerUp(x - 15, y, type));
     }
     
     private void createExhaustParticles() {

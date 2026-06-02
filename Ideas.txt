@@ -9,4 +9,5 @@ Add music
 Add instructions of how to play to the menu
 Make it so you cannot move with nitro
 Fix spawning in a line powerups
-Fix moving backwards
+Fix moving backwards - Done
+Fix coasting to slow down - Done
