@@ -1,192 +1,234 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.geom.AffineTransform;
 
-public class HillClimbRacing extends JPanel implements ActionListener, KeyListener {
-
-    Timer timer = new Timer(16, this);
-
-    double carX = 200;
-    double carY = 0;
-
-    double velocityX = 0;
-    double velocityY = 0;
-
-    double wheelRotation = 0;
-
-    boolean leftPressed = false;
-    boolean rightPressed = false;
-
-    double cameraX = 0;
+public class HillClimbRacing extends JFrame {
 
     public HillClimbRacing() {
-        setPreferredSize(new Dimension(1000, 600));
-        setBackground(new Color(135, 206, 235));
+        setTitle("Hill Climb Racing (Java Swing)");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(false);
+        
+        GamePanel gamePanel = new GamePanel();
+        add(gamePanel);
+        pack();
+        
+        setLocationRelativeTo(null);
+    }
 
-        JFrame frame = new JFrame("Hill Climb Racing");
-        frame.add(this);
-        frame.pack();
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            HillClimbRacing game = new HillClimbRacing();
+            game.setVisible(true);
+        });
+    }
+}
 
-        frame.addKeyListener(this);
+class GamePanel extends JPanel implements ActionListener, KeyListener {
 
-        frame.setVisible(true);
+    private final Timer timer;
+    private final int WIDTH = 800;
+    private final int HEIGHT = 600;
 
+    // Car Physics Variables
+    private double carX = 100;
+    private double carY = 300;
+    private double velocityX = 0;
+    private double velocityY = 0;
+    private double carAngle = 0; // in radians
+    private double angularVelocity = 0;
+
+    private final double GRAVITY = 0.3;
+    private final double ACCELERATION = 0.5;
+    private final double BRAKE = 0.3;
+    private final double FRICTION = 0.98;
+    private final double AIR_CONTROL = 0.05;
+
+    // Input States
+    private boolean keyUp = false;
+    private boolean keyDown = false;
+    private boolean keyLeft = false;
+    private boolean keyRight = false;
+
+    // Environment
+    private final int GROUND_LEVEL = 450;
+
+    public GamePanel() {
+        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setBackground(new Color(135, 206, 235)); // Sky Blue
+        setFocusable(true);
+        addKeyListener(this);
+
+        // 60 FPS Game Loop
+        timer = new Timer(16, this);
         timer.start();
     }
 
-    public double terrain(double x) {
-        return 450
-                + 60 * Math.sin(x * 0.01)
-                + 40 * Math.sin(x * 0.02)
-                + 20 * Math.sin(x * 0.05);
+    // Procedural Hill Function: Returns Y coordinate for a given X coordinate
+    private double getHillHeight(double x) {
+        return GROUND_LEVEL 
+            - Math.sin(x * 0.005) * 100 
+            - Math.cos(x * 0.01) * 50 
+            - Math.sin(x * 0.02) * 20;
     }
 
-    public double terrainSlope(double x) {
-        return (terrain(x + 1) - terrain(x - 1)) / 2.0;
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-
-        if (rightPressed) {
-            velocityX += 0.08;
-        }
-
-        if (leftPressed) {
-            velocityX -= 0.08;
-        }
-
-        velocityX *= 0.99;
-
-        velocityY += 0.5;
-
-        carX += velocityX;
-        carY += velocityY;
-
-        double ground = terrain(carX);
-
-        if (carY > ground - 35) {
-            carY = ground - 35;
-            velocityY = 0;
-        }
-
-        wheelRotation += velocityX * 0.08;
-
-        cameraX = carX - 300;
-
-        repaint();
+    // Get the slope angle of the hill at a given X coordinate
+    private double getHillAngle(double x) {
+        double delta = 1.0;
+        double y1 = getHillHeight(x - delta);
+        double y2 = getHillHeight(x + delta);
+        return Math.atan2(y2 - y1, delta * 2);
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        Graphics2D g2 = (Graphics2D) g;
+        // Camera offset to follow the car horizontally
+        int cameraX = (int) carX - 200;
 
-        g2.translate(-cameraX, 0);
-
-        drawTerrain(g2);
-        drawCar(g2);
-    }
-
-    private void drawTerrain(Graphics2D g2) {
-
-        Polygon ground = new Polygon();
-
-        ground.addPoint((int) cameraX - 100, 600);
-
-        for (int x = (int) cameraX - 100;
-             x <= cameraX + getWidth() + 100;
-             x++) {
-
-            ground.addPoint(x, (int) terrain(x));
+        // 1. Draw the Terrain / Hills
+        g2d.setColor(new Color(34, 139, 34)); // Forest Green
+        Polygon terrain = new Polygon();
+        for (int x = 0; x <= WIDTH; x += 5) {
+            int worldX = x + cameraX;
+            int worldY = (int) getHillHeight(worldX);
+            terrain.addPoint(x, worldY);
         }
+        terrain.addPoint(WIDTH, HEIGHT);
+        terrain.addPoint(0, HEIGHT);
+        g2d.fillPolygon(terrain);
 
-        ground.addPoint(
-                (int) (cameraX + getWidth() + 100),
-                600
-        );
+        // 2. Draw the Car
+        AffineTransform oldTransform = g2d.getTransform();
+        
+        // Translate to car's screen position and rotate
+        int screenCarX = (int) carX - cameraX;
+        g2d.translate(screenCarX, (int) carY);
+        g2d.rotate(carAngle);
 
-        g2.setColor(new Color(50, 180, 75));
-        g2.fillPolygon(ground);
-    }
+        // Draw Car Body (Centered around 0,0)
+        g2d.setColor(Color.RED);
+        g2d.fillRect(-30, -20, 60, 15); // Main chassis
+        g2d.setColor(Color.DARK_GRAY);
+        g2d.fillRect(-15, -30, 30, 10); // Cabin
 
-    private void drawWheel(Graphics2D g2, int x, int y) {
+        // Draw Wheels
+        g2d.setColor(Color.BLACK);
+        g2d.fillOval(-25, -5, 16, 16); // Back wheel
+        g2d.fillOval(9, -5, 16, 16);  // Front wheel
+        
+        g2d.setColor(Color.LIGHT_GRAY);
+        g2d.fillOval(-21, -1, 8, 8);
+        g2d.fillOval(13, -1, 8, 8);
 
-        AffineTransform old = g2.getTransform();
+        // Reset transformation matrix
+        g2d.setTransform(oldTransform);
 
-        g2.translate(x, y);
-        g2.rotate(wheelRotation);
-
-        g2.setColor(Color.BLACK);
-        g2.fillOval(-15, -15, 30, 30);
-
-        g2.setColor(Color.WHITE);
-
-        g2.drawLine(0, 0, 12, 0);
-        g2.drawLine(0, 0, -12, 0);
-
-        g2.drawLine(0, 0, 0, 12);
-        g2.drawLine(0, 0, 0, -12);
-
-        g2.setTransform(old);
-    }
-
-    private void drawCar(Graphics2D g2) {
-
-        double slope = terrainSlope(carX);
-
-        double angle = Math.atan(slope);
-
-        AffineTransform old = g2.getTransform();
-
-        g2.translate(carX, carY);
-        g2.rotate(angle);
-
-        g2.setColor(Color.RED);
-        g2.fillRoundRect(-40, -35, 80, 25, 10, 10);
-
-        g2.setColor(Color.ORANGE);
-        g2.fillRoundRect(-15, -55, 40, 20, 10, 10);
-
-        drawWheel(g2, -25, 0);
-        drawWheel(g2, 25, 0);
-
-        g2.setTransform(old);
+        // 3. Draw UI / Instructions
+        g2d.setColor(Color.BLACK);
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+        g2d.drawString("Controls: UP (Gas) | DOWN (Brake) | LEFT/RIGHT (Air Rotate)", 15, 25);
+        g2d.drawString(String.format("Distance: %.1f m", carX / 10), 15, 50);
     }
 
     @Override
-    public void keyPressed(KeyEvent e) {
+    public void actionPerformed(ActionEvent e) {
+        // Fetch current hill stats beneath the car
+        double hillY = getHillHeight(carX);
+        double hillAngle = getHillAngle(carX);
 
-        if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-            rightPressed = true;
+        boolean isGrounded = carY >= hillY - 2;
+
+        if (isGrounded) {
+            // --- GROUND PHYSICS ---
+            carY = hillY; // Snap to surface
+            velocityY = 0;
+
+            // Apply friction/drag naturally
+            velocityX *= FRICTION;
+
+            // Handle Driving Controls
+            if (keyUp) {
+                velocityX += ACCELERATION * Math.cos(hillAngle);
+                velocityY += ACCELERATION * Math.sin(hillAngle);
+            }
+            if (keyDown) {
+                velocityX -= BRAKE * Math.cos(hillAngle);
+                velocityY -= BRAKE * Math.sin(hillAngle);
+            }
+
+            // Align car chassis angle smoothly to the terrain slope
+            carAngle = carAngle * 0.7 + hillAngle * 0.3;
+            angularVelocity = 0; 
+        } else {
+            // --- AIR PHYSICS ---
+            velocityY += GRAVITY; // Gravity pulls down
+            velocityX *= 0.99;    // Slight air resistance
+
+            // Air rotation controls (flips)
+            if (keyLeft) {
+                angularVelocity -= AIR_CONTROL * 0.1;
+            }
+            if (keyRight) {
+                angularVelocity += AIR_CONTROL * 0.1;
+            }
+
+            angularVelocity *= 0.95; // Angular damping
+            carAngle += angularVelocity;
         }
 
-        if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-            leftPressed = true;
+        // Apply velocities to coordinates
+        carX += velocityX;
+        carY += velocityY;
+
+        // Prevent driving backward off-screen
+        if (carX < 50) {
+            carX = 50;
+            velocityX = 0;
+        }
+
+        // Crash check: If the car flips completely upside down on the ground, reset it
+        if (isGrounded && Math.abs(carAngle - hillAngle) > Math.PI / 2) {
+            // Reset Car
+            carX = Math.max(100, carX - 200);
+            carY = getHillHeight(carX) - 50;
+            carAngle = getHillAngle(carX);
+            velocityX = 0;
+            velocityY = 0;
+            angularVelocity = 0;
+            JOptionPane.showMessageDialog(this, "You Crashed! Resetting to last safe hill.");
+        }
+
+        repaint();
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {}
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_UP -> keyUp = true;
+            case KeyEvent.VK_DOWN -> keyDown = true;
+            case KeyEvent.VK_LEFT -> keyLeft = true;
+            case KeyEvent.VK_RIGHT -> keyRight = true;
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-
-        if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-            rightPressed = false;
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_UP -> keyUp = false;
+            case KeyEvent.VK_DOWN -> keyDown = false;
+            case KeyEvent.VK_LEFT -> keyLeft = false;
+            case KeyEvent.VK_RIGHT -> keyRight = false;
         }
-
-        if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-            leftPressed = false;
-        }
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(HillClimbRacing::new);
     }
 }
