@@ -11,7 +11,7 @@ public class RacingGame extends JFrame {
     private GamePanel gamePanel;
     
     public RacingGame() {
-        setTitle("Extreme Racing Championship");
+        setTitle("Cannonball Run: Highway Chase");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         
