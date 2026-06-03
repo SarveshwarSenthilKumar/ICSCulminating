@@ -26,7 +26,7 @@ public class RacingGame extends JFrame {
     }
     
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new RacingGame());
+        // SwingUtilities.invokeLater(() -> new RacingGame());
     }
 }
 
