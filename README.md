@@ -36,8 +36,9 @@ The main theme of the project will be surrounding cars and collision detection t
 
 **Sarveshwar Senthil Kumar**
 
-I am an aspiring software developer, current computer science student, and car enthusiast. I enjoy build various projects to improve my programming knowledge base and build experience. This project allows me to learn Java Swing and utilize it for my Grade 12 Computer Science Summative.
+I am an aspiring software developer, current computer science student, and car enthusiast. I enjoy building various projects to improve my programming knowledge base and build experience. This project allows me to learn Java Swing and utilize it for my Grade 12 Computer Science Culminating Task.
 
 - **Computer Science Portfolio:** [(https://sarveshwarsenthilkumar.github.io/IntroductionToComputerScienceICSPortfolio/)]
 - **General Portfolio:** [(https://sarveshwarsenthilkumar.github.io)]
+
 ---
