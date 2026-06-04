@@ -211,6 +211,9 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         // Check collisions
         checkCollisions();
+
+        // Check opponent collisions
+        checkOpponentCollisions();
         
         // Update shield
         if (hasShield) {
@@ -655,6 +658,86 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
                 break;
         }
     }
+
+    private void checkOpponentCollisions() {
+    // Check collisions between opponent cars
+    for (int i = 0; i < opponentCars.size(); i++) {
+        for (int j = i + 1; j < opponentCars.size(); j++) {
+            OpponentCar car1 = opponentCars.get(i);
+            OpponentCar car2 = opponentCars.get(j);
+            
+            if (car1.getBounds().intersects(car2.getBounds())) {
+                // Cars are overlapping, push them apart
+                resolveOpponentCollision(car1, car2);
+            }
+        }
+    }
+}
+
+private void resolveOpponentCollision(OpponentCar car1, OpponentCar car2) {
+    // Calculate center points
+    double car1CenterX = car1.x + car1.width / 2;
+    double car1CenterY = car1.y + car1.height / 2;
+    double car2CenterX = car2.x + car2.width / 2;
+    double car2CenterY = car2.y + car2.height / 2;
+    
+    // Calculate overlap on X and Y axes
+    double overlapX = Math.min(car1.x + car1.width, car2.x + car2.width) - 
+                      Math.max(car1.x, car2.x);
+    double overlapY = Math.min(car1.y + car1.height, car2.y + car2.height) - 
+                      Math.max(car1.y, car2.y);
+    
+    // Push apart based on smaller overlap 
+    if (overlapX < overlapY) {
+        // Push apart horizontally
+        if (car1CenterX < car2CenterX) {
+            car1.x -= overlapX / 2;
+            car2.x += overlapX / 2;
+        } else {
+            car1.x += overlapX / 2;
+            car2.x -= overlapX / 2;
+        }
+        
+        // Keep cars within road boundaries
+        car1.x = Math.max(ROAD_X + 5, Math.min(ROAD_X + ROAD_WIDTH - car1.width - 5, car1.x));
+        car2.x = Math.max(ROAD_X + 5, Math.min(ROAD_X + ROAD_WIDTH - car2.width - 5, car2.x));
+        
+        // Create minor collision particles
+        createOpponentCollisionParticles(car1.x + car1.width/2, car1.y + car1.height/2);
+    } else {
+        // Push apart vertically
+        if (car1CenterY < car2CenterY) {
+            car1.y -= overlapY / 2;
+            car2.y += overlapY / 2;
+        } else {
+            car1.y += overlapY / 2;
+            car2.y -= overlapY / 2;
+        }
+        
+        // Create minor collision particles
+        createOpponentCollisionParticles(car1.x + car1.width/2, car1.y + car1.height/2);
+    }
+    
+    // Adjust speeds based on collision
+    double tempSpeed = car1.baseSpeed;
+    car1.baseSpeed = car2.baseSpeed * 0.9;
+    car2.baseSpeed = tempSpeed * 0.9;
+}
+
+private void createOpponentCollisionParticles(double x, double y) {
+    // Create small spark effects when opponent cars collide
+    for (int i = 0; i < 15; i++) {
+        double angle = random.nextDouble() * Math.PI * 2;
+        double speed = random.nextDouble() * 3 + 1;
+        particles.add(new Particle(
+            x, y,
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            new Color(255, random.nextInt(100) + 155, 0, 200),
+            20 + random.nextInt(15)
+        ));
+    }
+}
     
     @Override
     public void keyTyped(KeyEvent e) {}
