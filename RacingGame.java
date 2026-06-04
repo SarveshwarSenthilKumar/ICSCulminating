@@ -9,8 +9,9 @@ import java.util.Random;
 // Main class
 public class RacingGame extends JFrame {
     private GamePanel gamePanel;
-    
-    public RacingGame() {
+
+    public RacingGame(String username, String scoresFile) { 
+
         setTitle("Cannonball Run: Highway Chase");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
@@ -56,6 +57,9 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     // Pause boolean
     private boolean paused = false;
+
+    private String username;
+    private String scoresFile = "scores.txt";
 
     private int score = 0;
     private int speed = 12;
@@ -335,6 +339,8 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
                     
                     if (lives <= 0) {
                         gameOver = true;
+                        ScoreManager.saveScore(scoresFile, username, score);
+
                         gameRunning = false;
                         gameTimer.stop();
                     }

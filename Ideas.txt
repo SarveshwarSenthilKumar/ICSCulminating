@@ -3,7 +3,7 @@ Add oncoming traffic
 Update the speed of the opponents depending on own speed
 Add traffic jams and add multiple cars on screen
 Add a pause feature - Implemented to be fixed
-Add a proper menu
+Add a proper menu - implemented fix name and aesthetics
 Add score saving system
 Add music
 Add instructions of how to play to the menu

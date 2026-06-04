@@ -286,7 +286,7 @@ public class AuthManager {
      * @param username the logged-in player's username
      */
     private void launchGame(String username) {
-        SwingUtilities.invokeLater(() -> new RacingGame());
+        SwingUtilities.invokeLater(() -> new RacingGame(username, SCORES_FILE).setVisible(true));
     }
 
     // ── File I/O ──────────────────────────────────────────────────────────────
