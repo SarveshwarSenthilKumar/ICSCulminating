@@ -221,8 +221,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         // Spawn opponents
-        if (frameCount % Math.max(30, 100 - difficulty * 5) == 0) {
-            spawnOpponent();
+        if (frameCount % Math.max(30, 100 - difficulty * 10) == 0) {
+            int opponents = 1 + (int)(Math.random() * 8);
+            for (int i=0; i < opponents; i++) {
+                spawnOpponent();
+            }
         }
         
         // Spawn power-ups
