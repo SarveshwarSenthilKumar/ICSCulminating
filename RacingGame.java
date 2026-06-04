@@ -221,7 +221,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         // Spawn opponents
-        if (frameCount % Math.max(30, 100 - difficulty * 10) == 0) {
+        if (frameCount % Math.max(30, 100 - difficulty * 5) == 0) {
             int opponents = 1 + (int)(Math.random() * 8);
             for (int i=0; i < opponents; i++) {
                 spawnOpponent();
@@ -291,7 +291,8 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void spawnOpponent() {
         int lane = random.nextInt(LANE_COUNT);
         int x = ROAD_X + lane * LANE_WIDTH + LANE_WIDTH / 2;
-        opponentCars.add(new OpponentCar(x - 25, -100, lane));
+        int y = -100 - (int)(Math.random() * 100);
+        opponentCars.add(new OpponentCar(x - 25, y, lane));
     }
     
     private void spawnPowerUp() {
