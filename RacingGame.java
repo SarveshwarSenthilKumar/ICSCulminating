@@ -99,7 +99,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         opponentCars = new ArrayList<>();
 
         oncomingCars = new ArrayList<>();
-        
+
         roadMarkings = new ArrayList<>();
         particles = new ArrayList<>();
         powerUps = new ArrayList<>();
@@ -208,6 +208,9 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
 
         updateOpponents();
+
+        updateOncomingCars();
+
         updatePowerUps();
         updateParticles();
         checkCollisions();
@@ -224,6 +227,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             int opponents = 1 + (int)(Math.random() * 8);
             for (int i = 0; i < opponents; i++) {
                 spawnOpponent();
+            }
+        }
+        if (frameCount % Math.max(40, 150 - difficulty * 5) == 0) {
+            if (random.nextDouble() < 0.4) { // 40% chance to spawn oncoming car
+                spawnOncomingCar();
             }
         }
         
@@ -259,6 +267,20 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             }
         }
     }
+
+    private void updateOncomingCars() {
+        double scrollSpeed = speed / 10.0;
+        
+        for (int i = oncomingCars.size() - 1; i >= 0; i--) {
+            OpponentCar car = oncomingCars.get(i);
+
+            car.y += (scrollSpeed + car.baseSpeed);
+            
+            if (car.y + car.height < -100) {
+                oncomingCars.remove(i);
+            }
+        }
+    }
     
     private void updatePowerUps() {
         for (int i = powerUps.size() - 1; i >= 0; i--) {
@@ -288,6 +310,13 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         int y = -100 - (int)(Math.random() * 100);
         opponentCars.add(new OpponentCar(x - 25, y, lane));
     }
+
+    private void spawnOncomingCar() {
+        int lane = random.nextInt(LANE_COUNT / 2);
+        int x = ROAD_X + lane * LANE_WIDTH + LANE_WIDTH / 2;
+        int y = -100 - random.nextInt(200);
+        oncomingCars.add(new OpponentCar(x - 25, y, lane, true));
+}
     
     private void spawnPowerUp() {
         int lane = random.nextInt(LANE_COUNT);
@@ -331,6 +360,32 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
                     createExplosion(playerCar.x + playerCar.width/2, playerCar.y + playerCar.height/2);
                     cameraShake = 20;
                     opponentCars.remove(i);
+                    
+                    if (lives <= 0) {
+                        gameOver = true;
+                        ScoreManager.saveScore(scoresFile, username, score);
+                        gameRunning = false;
+                        gameTimer.stop();
+                    }
+                }
+                break;
+            }
+        }
+
+        for (int i = oncomingCars.size() - 1; i >= 0; i--) {
+            OpponentCar oncoming = oncomingCars.get(i);
+            if (playerBounds.intersects(oncoming.getBounds())) {
+                if (hasShield) {
+                    oncomingCars.remove(i);
+                    hasShield = false;
+                    shieldDuration = 0;
+                    createExplosion(oncoming.x + oncoming.width/2, oncoming.y + oncoming.height/2);
+                    cameraShake = 15;
+                } else {
+                    lives--;
+                    createExplosion(playerCar.x + playerCar.width/2, playerCar.y + playerCar.height/2);
+                    cameraShake = 25;
+                    oncomingCars.remove(i);
                     
                     if (lives <= 0) {
                         gameOver = true;
@@ -838,39 +893,40 @@ class OpponentCar {
     }
     
     public void draw(Graphics2D g2d) {
+        Graphics2D g = (Graphics2D) g2d.create();
         
         if (oncoming) {
-            // Flip the car 180 degrees for oncoming traffic
-            g2d.translate(x + width/2, y + height/2);
-            g2d.rotate(Math.PI);
-            g2d.translate(-(x + width/2), -(y + height/2));
+            g.rotate(Math.PI, x + width/2, y + height/2);
         }
-        g2d.setColor(new Color(0, 0, 0, 100));
-        g2d.fillRoundRect((int)x + 3, (int)y + 3, width, height, 10, 10);
         
-        g2d.setColor(color);
-        g2d.fillRoundRect((int)x, (int)y, width, height, 10, 10);
+        g.setColor(new Color(0, 0, 0, 100));
+        g.fillRoundRect((int)x + 3, (int)y + 3, width, height, 10, 10);
         
-        g2d.setColor(new Color(135, 206, 235, 180));
-        g2d.fillRect((int)x + 15, (int)y + 8, width - 30, 8);
+        g.setColor(color);
+        g.fillRoundRect((int)x, (int)y, width, height, 10, 10);
         
-        g2d.setColor(Color.WHITE);
-        g2d.fillRect((int)x + 15, (int)y + 25, 4, height - 40);
-        g2d.fillRect((int)x + width - 19, (int)y + 25, 4, height - 40);
+        g.setColor(new Color(135, 206, 235, 180));
+        g.fillRect((int)x + 15, (int)y + 8, width - 30, 8);
         
-        g2d.setColor(Color.YELLOW);
-        g2d.fillOval((int)x + 5, (int)y + 2, 10, 8);
-        g2d.fillOval((int)x + width - 15, (int)y + 2, 10, 8);
+        g.setColor(Color.WHITE);
+        g.fillRect((int)x + 15, (int)y + 25, 4, height - 40);
+        g.fillRect((int)x + width - 19, (int)y + 25, 4, height - 40);
         
-        g2d.setColor(Color.RED);
-        g2d.fillOval((int)x + 5, (int)y + height - 10, 10, 8);
-        g2d.fillOval((int)x + width - 15, (int)y + height - 10, 10, 8);
+        g.setColor(Color.YELLOW);
+        g.fillOval((int)x + 5, (int)y + 2, 10, 8);
+        g.fillOval((int)x + width - 15, (int)y + 2, 10, 8);
         
-        g2d.setColor(Color.BLACK);
-        g2d.fillRoundRect((int)x - 3, (int)y + 10, 8, 18, 4, 4);
-        g2d.fillRoundRect((int)x + width - 5, (int)y + 10, 8, 18, 4, 4);
-        g2d.fillRoundRect((int)x - 3, (int)y + height - 28, 8, 18, 4, 4);
-        g2d.fillRoundRect((int)x + width - 5, (int)y + height - 28, 8, 18, 4, 4);
+        g.setColor(Color.RED);
+        g.fillOval((int)x + 5, (int)y + height - 10, 10, 8);
+        g.fillOval((int)x + width - 15, (int)y + height - 10, 10, 8);
+        
+        g.setColor(Color.BLACK);
+        g.fillRoundRect((int)x - 3, (int)y + 10, 8, 18, 4, 4);
+        g.fillRoundRect((int)x + width - 5, (int)y + 10, 8, 18, 4, 4);
+        g.fillRoundRect((int)x - 3, (int)y + height - 28, 8, 18, 4, 4);
+        g.fillRoundRect((int)x + width - 5, (int)y + height - 28, 8, 18, 4, 4);
+        
+        g.dispose();
     }
 }
 
