@@ -9,7 +9,9 @@ Add check high score feature
 Add music
 Add instructions of how to play to the menu
 Make it so you cannot move with nitro
-Update spawning rate of opponent cars - DOne
+Add tilt when turning - Done
+Add skid marks when braking - Done
+Update spawning rate of opponent cars - Done
 Fix spawning in a line powerups - Done
 Fix moving backwards - Done
 Fix coasting to slow down - Done
