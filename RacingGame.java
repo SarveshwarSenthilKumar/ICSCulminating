@@ -242,7 +242,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void updateOpponents() {
         for (int i = opponentCars.size() - 1; i >= 0; i--) {
             OpponentCar car = opponentCars.get(i);
-            car.y += (speed / 10 + car.baseSpeed);
+            car.y += (speed / 10 + car.baseSpeed * 0.1);
             
             if (frameCount % 30 == 0 && random.nextBoolean()) {
                 car.aiMove(LANE_WIDTH, ROAD_X);
