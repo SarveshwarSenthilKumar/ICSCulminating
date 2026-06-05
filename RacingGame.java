@@ -215,6 +215,8 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         updateParticles();
         checkCollisions();
         checkOpponentCollisions();
+
+        checkOncomingCollision();
         
         if (hasShield) {
             shieldDuration--;
@@ -226,12 +228,12 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         if (frameCount % Math.max(30, 100 - difficulty * 5) == 0) {
             int opponents = 1 + (int)(Math.random() * 8);
             for (int i = 0; i < opponents; i++) {
-                spawnOpponent();
-            }
-        }
-        if (frameCount % Math.max(40, 150 - difficulty * 5) == 0) {
-            if (random.nextDouble() < 0.4) { // 40% chance to spawn oncoming car
-                spawnOncomingCar();
+                if (random.nextDouble() < 0.5) {
+                    spawnOncomingCar();
+                }
+                else{
+                    spawnOpponent();
+                }
             }
         }
         
@@ -306,7 +308,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void spawnOpponent() {
-        int lane = random.nextInt(LANE_COUNT);
+        int lane = random.nextInt(LANE_COUNT / 2, LANE_COUNT);
         int x = ROAD_X + lane * LANE_WIDTH + LANE_WIDTH / 2;
         int y = -100 - (int)(Math.random() * 100);
         opponentCars.add(new OpponentCar(x - 25, y, lane));
@@ -710,6 +712,24 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
                 OpponentCar car2 = opponentCars.get(j);
                 if (car1.getBounds().intersects(car2.getBounds())) {
                     resolveOpponentCollision(car1, car2);
+                }
+            }
+        }
+    }
+
+    private void checkOncomingCollision() {
+        for (int i = opponentCars.size() - 1; i >= 0; i--) {
+            OpponentCar normal = opponentCars.get(i);
+            for (int j = oncomingCars.size() - 1; j >= 0; j--) {
+                OpponentCar oncoming = oncomingCars.get(j);
+                if (normal.getBounds().intersects(oncoming.getBounds())) {
+                    // Both cars crash and explode
+                    createExplosion(normal.x + normal.width/2, normal.y + normal.height/2);
+                    createExplosion(oncoming.x + oncoming.width/2, oncoming.y + oncoming.height/2);
+                    cameraShake = 15;
+                    opponentCars.remove(i);
+                    oncomingCars.remove(j);
+                    break;
                 }
             }
         }
