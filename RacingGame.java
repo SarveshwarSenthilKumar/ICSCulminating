@@ -454,15 +454,28 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void drawRoadMarkings(Graphics2D g2d) {
+        // Draw double yellow center line
+        int centerLane = LANE_COUNT / 2;
+        int centerX = ROAD_X + centerLane * LANE_WIDTH;
+        
+        g2d.setColor(Color.YELLOW);
+        g2d.setStroke(new BasicStroke(3));
+        g2d.fillRect(centerX - 6, 0, 3, SCREEN_HEIGHT);
+        g2d.fillRect(centerX + 3, 0, 3, SCREEN_HEIGHT);
+        
+        // Draw dashed white lane lines for other lanes
         g2d.setColor(ROAD_MARKING_COLOR);
+        g2d.setStroke(new BasicStroke(2));
         for (RoadMarking marking : roadMarkings) {
             for (int i = 1; i < LANE_COUNT; i++) {
+                if (i == centerLane) continue; // Skip center line
                 int x = ROAD_X + i * LANE_WIDTH;
                 g2d.fillRect(x - 2, (int)(marking.y + roadOffset) % SCREEN_HEIGHT, 4, 20);
             }
         }
         
-        g2d.setColor(Color.YELLOW);
+        // Solid edge lines
+        g2d.setColor(Color.WHITE);
         g2d.fillRect(ROAD_X + 10, 0, 3, SCREEN_HEIGHT);
         g2d.fillRect(ROAD_X + ROAD_WIDTH - 13, 0, 3, SCREEN_HEIGHT);
     }
