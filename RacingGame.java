@@ -270,11 +270,12 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void updateOncomingCars() {
         double scrollSpeed = speed / 10.0;
+        double oncomingSpeedMultiplier = 1.5;
         
         for (int i = oncomingCars.size() - 1; i >= 0; i--) {
             OpponentCar car = oncomingCars.get(i);
 
-            car.y += (scrollSpeed + car.baseSpeed);
+            car.y += (scrollSpeed + car.baseSpeed)  * oncomingSpeedMultiplier;
             
             if (car.y + car.height < -100) {
                 oncomingCars.remove(i);
