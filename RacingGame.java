@@ -163,7 +163,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         roadOffset = (roadOffset + speed / 10) % 40;
         
         for (RoadMarking marking : roadMarkings) {
-            marking.y = (marking.y + speed / 10) % (SCREEN_HEIGHT + 40);
+            marking.y = (marking.y + speed / 2) % (SCREEN_HEIGHT + 40);
         }
         
         double lateralForce = Math.max(2.5, 5.0 - speed / 100.0);
