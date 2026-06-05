@@ -1,14 +1,15 @@
 Add a middle marker with separating traffic
 Add oncoming traffic
-Update the speed of the opponents depending on own speed
-Add traffic jams and add multiple cars on screen
+Update the speed of the opponents depending on own speed - Done
+Add traffic jams and add multiple cars on screen - Done
 Add a pause feature - Implemented to be fixed
 Add a proper menu - implemented fix name and aesthetics
 Add score saving system - Done
+Add check high score feature
 Add music
 Add instructions of how to play to the menu
 Make it so you cannot move with nitro
-Update spawning rate of opponent cars
+Update spawning rate of opponent cars - DOne
 Fix spawning in a line powerups - Done
 Fix moving backwards - Done
 Fix coasting to slow down - Done
