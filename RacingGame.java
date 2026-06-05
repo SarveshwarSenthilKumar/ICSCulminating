@@ -39,6 +39,9 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     
     private PlayerCar playerCar;
     private List<OpponentCar> opponentCars;
+
+    private List<OpponentCar> oncomingCars;
+
     private List<RoadMarking> roadMarkings;
     private List<Particle> particles;
     private List<PowerUp> powerUps;
@@ -94,6 +97,9 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void initializeGame() {
         playerCar = new PlayerCar(SCREEN_WIDTH / 2 - 25, SCREEN_HEIGHT - 150);
         opponentCars = new ArrayList<>();
+
+        oncomingCars = new ArrayList<>();
+        
         roadMarkings = new ArrayList<>();
         particles = new ArrayList<>();
         powerUps = new ArrayList<>();
@@ -398,6 +404,10 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         for (OpponentCar car : opponentCars) {
+            car.draw(g2d);
+        }
+
+        for (OpponentCar car : oncomingCars) {
             car.draw(g2d);
         }
         
@@ -779,27 +789,38 @@ class PlayerCar {
 }
 
 class OpponentCar {
-    double x, y;
-    int width = 70;
-    int height = 90;
-    int lane;
-    double baseSpeed;
-    Color color;
-    Random random = new Random();
-    
-    static Color[] colors = {
-        new Color(0, 100, 200),
-        new Color(200, 100, 0),
-        new Color(100, 200, 0),
-        new Color(200, 0, 200),
-        new Color(200, 200, 0),
-    };
-    
-    public OpponentCar(double x, double y, int lane) {
+        double x, y;
+        int width = 70;
+        int height = 90;
+        int lane;
+
+        boolean oncoming;
+
+        double baseSpeed;
+        Color color;
+        Random random = new Random();
+        
+        static Color[] colors = {
+            new Color(0, 100, 200),
+            new Color(200, 100, 0),
+            new Color(100, 200, 0),
+            new Color(200, 0, 200),
+            new Color(200, 200, 0),
+        };
+        
+        public OpponentCar(double x, double y, int lane) {
+        this(x, y, lane, false);
+    }
+
+    public OpponentCar(double x, double y, int lane, boolean oncoming) {
         this.x = x;
         this.y = y;
         this.lane = lane;
+        this.oncoming = oncoming;
         this.baseSpeed = random.nextDouble() * 3 + 1;
+        if (oncoming) {
+            this.baseSpeed = (random.nextDouble() * 3 + 2) * 2; // Double speed
+        }
         this.color = colors[random.nextInt(colors.length)];
     }
     
@@ -817,6 +838,13 @@ class OpponentCar {
     }
     
     public void draw(Graphics2D g2d) {
+        
+        if (oncoming) {
+            // Flip the car 180 degrees for oncoming traffic
+            g2d.translate(x + width/2, y + height/2);
+            g2d.rotate(Math.PI);
+            g2d.translate(-(x + width/2), -(y + height/2));
+        }
         g2d.setColor(new Color(0, 0, 0, 100));
         g2d.fillRoundRect((int)x + 3, (int)y + 3, width, height, 10, 10);
         
