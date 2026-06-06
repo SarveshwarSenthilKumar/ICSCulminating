@@ -15,7 +15,7 @@ public class RacingGame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         
-        gamePanel = new GamePanel();
+        gamePanel = new GamePanel(username, scoresFile);
         add(gamePanel);
         
         pack();
@@ -36,6 +36,9 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private static final int ROAD_X = (SCREEN_WIDTH - ROAD_WIDTH) / 2;
     private static final int LANE_COUNT = 8;
     private static final int LANE_WIDTH = ROAD_WIDTH / LANE_COUNT;
+
+    private String username;     
+    private String scoresFile;
     
     private PlayerCar playerCar;
     private List<OpponentCar> opponentCars;
@@ -51,9 +54,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private boolean gameRunning = false;
     private boolean gameOver = false;
     private boolean paused = false;
-
-    private String username;
-    private String scoresFile = "scores.txt";
 
     private int score = 0;
     private int speed = 62;
@@ -86,7 +86,10 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private static final Color ROAD_MARKING_COLOR = new Color(255, 255, 255, 200);
     private static final Color SHOULDER_COLOR = new Color(200, 200, 200);
     
-    public GamePanel() {
+    public GamePanel(String username, String scoresFile) {
+        this.username = username;
+        this.scoresFile = scoresFile;
+
         setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setBackground(Color.BLACK);
         setFocusable(true);

@@ -2,15 +2,14 @@ Add a middle marker with separating traffic - Done
 Add oncoming traffic - Done
 Update the speed of the opponents depending on own speed - Done
 Add traffic jams and add multiple cars on screen - Done
-Add a pause feature - Implemented to be fixed
+Add a pause feature - Done
 Add a proper menu - implemented fix name and aesthetics
 Add score saving system - Done
 Add check high score feature
-Fix score saving system 
+Fix score saving system - Done
 Add music
 Make sure collision detection works for same on oncoming side
 Add instructions of how to play to the menu
-Make it so you cannot move with nitro
 Add distance counter
 Add bonus for time spent in oncoming traffic
 Add tilt when turning - Done
