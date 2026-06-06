@@ -6,7 +6,9 @@ Add a pause feature - Implemented to be fixed
 Add a proper menu - implemented fix name and aesthetics
 Add score saving system - Done
 Add check high score feature
+Fix score saving system 
 Add music
+Make sure collision detection works for same on oncoming side
 Add instructions of how to play to the menu
 Make it so you cannot move with nitro
 Add distance counter
