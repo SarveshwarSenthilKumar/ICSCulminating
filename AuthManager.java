@@ -5,15 +5,15 @@ import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import javax.sound.sampled.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.sound.sampled.*;
 
 /**
  * =============================================================================
  * AuthManager.java — Authentication & Application Entry Point
  * =============================================================================
- * Handles user registration, login, and session management for the Pinball
+ * Handles user registration, login, and session management for the Cannonball Run
  * game. Credentials are stored in "users.txt" (username:passwordHash format).
  * Launches the main game window upon successful authentication.
  *
@@ -69,7 +69,7 @@ public class AuthManager {
     // ── Frame Construction ────────────────────────────────────────────────────
 
     private JFrame buildLoginFrame() {
-        JFrame frame = new JFrame("PINBALL ARCADE — Login");
+        JFrame frame = new JFrame("Cannonball Run: Highway Chase — Login");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
         frame.setSize(576, 644); // Slightly taller to accommodate the mute text safely
@@ -105,7 +105,7 @@ public class AuthManager {
         JPanel titlePanel = new JPanel(new GridLayout(3,1,0,6));
         titlePanel.setOpaque(false);
 
-        JLabel neon1 = neonLabel("◈ PINBALL ARCADE ◈", FONT_TITLE, COL_ACCENT);
+        JLabel neon1 = neonLabel("◈ Cannonball Run: Highway Chase ◈", new Font("Monospaced",Font.BOLD,22), COL_ACCENT);
         JLabel neon2 = neonLabel("PLAYER AUTHENTICATION", new Font("Monospaced",Font.BOLD,13), COL_ACCENT2);
         JLabel neon3 = neonLabel("─────────────────────────────", FONT_LABEL, new Color(80,80,120));
         titlePanel.add(neon1); titlePanel.add(neon2); titlePanel.add(neon3);
