@@ -54,6 +54,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private boolean paused = false;
 
     private int score = 0;
+    private double totalDistance = 0.0; // Total distance traveled in kilometers
     private int speed = 62;
     private int maxSpeed = 223;
     private int acceleration = 2;
@@ -62,6 +63,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int difficulty = 1;
     private int frameCount = 0;
     private long lastPowerUpTime = 0;
+    private long lastDistanceUpdate = 0;
     
     private int nitroFuel = 120;
     private int lives = 3;
@@ -109,16 +111,20 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         gameTimer = new Timer(16, this);
+        lastDistanceUpdate = System.currentTimeMillis();
     }
     
     public void startGame() {
         gameRunning = true;
         gameOver = false;
         score = 0;
+        totalDistance = 0.0;
         speed = 62;
         lives = 3;
         nitroFuel = 100;
         difficulty = 1;
+        frameCount = 0;
+        lastDistanceUpdate = System.currentTimeMillis();
         gameTimer.start();
     }
     
@@ -136,6 +142,16 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             cameraShake *= 0.9f;
             if (cameraShake < 0.1f) cameraShake = 0;
         }
+
+        // Update distance traveled based on speed (km/h converted to km per frame)
+        long currentTime = System.currentTimeMillis();
+        double timeDeltaSeconds = (currentTime - lastDistanceUpdate) / 1000.0;
+        if (timeDeltaSeconds > 0.1) { // Cap delta to prevent large jumps
+            timeDeltaSeconds = 0.016; // Use frame time approximation
+        }
+        double distanceKm = (speed / 3600.0) * timeDeltaSeconds; // km per second * seconds
+        totalDistance += distanceKm;
+        lastDistanceUpdate = currentTime;
 
         boolean ifSpeed = nitroPressed && nitroFuel > 0;
 
@@ -701,24 +717,38 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void drawHUD(Graphics2D g2d) {
+        // Main HUD panel
         g2d.setColor(new Color(0, 0, 0, 150));
-        g2d.fillRoundRect(10, 10, 250, 120, 15, 15);
+        g2d.fillRoundRect(10, 10, 280, 150, 15, 15);
         g2d.setColor(new Color(255, 255, 255, 200));
         g2d.setStroke(new BasicStroke(2));
-        g2d.drawRoundRect(10, 10, 250, 120, 15, 15);
+        g2d.drawRoundRect(10, 10, 280, 150, 15, 15);
         
         g2d.setFont(new Font("Arial", Font.BOLD, 20));
         g2d.setColor(Color.WHITE);
         g2d.drawString("Score: " + score, 30, 45);
         g2d.drawString("Speed: " + speed + " km/h", 30, 75);
-        g2d.drawString("Lives: ", 30, 105);
+        
+        // Distance counter with realistic formatting
+        String distanceText;
+        if (totalDistance < 1.0) {
+            distanceText = String.format("Distance: %.0f m", totalDistance * 1000);
+        } else if (totalDistance < 10.0) {
+            distanceText = String.format("Distance: %.2f km", totalDistance);
+        } else {
+            distanceText = String.format("Distance: %.1f km", totalDistance);
+        }
+        g2d.drawString(distanceText, 30, 105);
+        
+        g2d.drawString("Lives: ", 30, 135);
         for (int i = 0; i < lives; i++) {
             g2d.setColor(Color.RED);
-            g2d.fillOval(95 + i * 25, 90, 15, 15);
+            g2d.fillOval(95 + i * 25, 120, 15, 15);
             g2d.setColor(Color.WHITE);
-            g2d.drawOval(95 + i * 25, 90, 15, 15);
+            g2d.drawOval(95 + i * 25, 120, 15, 15);
         }
         
+        // Nitro gauge
         int nitroX = SCREEN_WIDTH - 130;
         int nitroY = 20;
         g2d.setColor(new Color(0, 0, 0, 150));
@@ -764,18 +794,31 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         textX = (SCREEN_WIDTH - fm.stringWidth(scoreText)) / 2;
         g2d.drawString(scoreText, textX, SCREEN_HEIGHT / 2 - 10);
         
+        // Show total distance on game over screen
+        String distanceText;
+        if (totalDistance < 1.0) {
+            distanceText = String.format("Distance Traveled: %.0f meters", totalDistance * 1000);
+        } else {
+            distanceText = String.format("Distance Traveled: %.2f kilometers", totalDistance);
+        }
+        g2d.setFont(new Font("Arial", Font.BOLD, 28));
+        g2d.setColor(new Color(0, 255, 255));
+        fm = g2d.getFontMetrics();
+        textX = (SCREEN_WIDTH - fm.stringWidth(distanceText)) / 2;
+        g2d.drawString(distanceText, textX, SCREEN_HEIGHT / 2 + 30);
+        
         g2d.setFont(new Font("Arial", Font.PLAIN, 24));
         g2d.setColor(Color.YELLOW);
         String restartText = "Press ENTER to restart";
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(restartText)) / 2;
-        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 40);
+        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 90);
         
         g2d.setColor(new Color(0, 255, 255));
         String highScoreText = "Press H to view High Scores";
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(highScoreText)) / 2;
-        g2d.drawString(highScoreText, textX, SCREEN_HEIGHT / 2 + 80);
+        g2d.drawString(highScoreText, textX, SCREEN_HEIGHT / 2 + 130);
     }
     
     @Override
