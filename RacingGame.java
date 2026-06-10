@@ -36,6 +36,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private static final int ROAD_X = (SCREEN_WIDTH - ROAD_WIDTH) / 2;
     private static final int LANE_COUNT = 8;
     private static final int LANE_WIDTH = ROAD_WIDTH / LANE_COUNT;
+    private static final int ONCOMING_LANE_COUNT = LANE_COUNT / 2; // First 4 lanes are oncoming
 
     private String username;     
     private String scoresFile;
@@ -54,7 +55,8 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private boolean paused = false;
 
     private int score = 0;
-    private double totalDistance = 0.0; // Total distance traveled in kilometers
+    private int bonusScore = 0;
+    private double totalDistance = 0.0;
     private int speed = 62;
     private int maxSpeed = 223;
     private int acceleration = 2;
@@ -64,6 +66,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int frameCount = 0;
     private long lastPowerUpTime = 0;
     private long lastDistanceUpdate = 0;
+    private long lastBonusUpdate = 0;
     
     private int nitroFuel = 120;
     private int lives = 3;
@@ -79,6 +82,13 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private float cameraShake = 0;
     private Random random = new Random();
     private int roadOffset = 0;
+    
+    // Bonus system variables
+    private boolean inOncomingTraffic = false;
+    private int oncomingTimeFrames = 0;
+    private float bonusMultiplier = 1.0f;
+    private float bonusAlpha = 0f;
+    private int bonusTextTimer = 0;
     
     private static final Color GRASS_COLOR = new Color(34, 139, 34);
     private static final Color GRASS_DARK = new Color(25, 100, 25);
@@ -112,19 +122,26 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         gameTimer = new Timer(16, this);
         lastDistanceUpdate = System.currentTimeMillis();
+        lastBonusUpdate = System.currentTimeMillis();
     }
     
     public void startGame() {
         gameRunning = true;
         gameOver = false;
         score = 0;
+        bonusScore = 0;
         totalDistance = 0.0;
         speed = 62;
         lives = 3;
         nitroFuel = 100;
         difficulty = 1;
         frameCount = 0;
+        inOncomingTraffic = false;
+        oncomingTimeFrames = 0;
+        bonusMultiplier = 1.0f;
+        bonusAlpha = 0f;
         lastDistanceUpdate = System.currentTimeMillis();
+        lastBonusUpdate = System.currentTimeMillis();
         gameTimer.start();
     }
     
@@ -143,15 +160,44 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             if (cameraShake < 0.1f) cameraShake = 0;
         }
 
-        // Update distance traveled based on speed (km/h converted to km per frame)
+        // Update distance traveled
         long currentTime = System.currentTimeMillis();
         double timeDeltaSeconds = (currentTime - lastDistanceUpdate) / 1000.0;
-        if (timeDeltaSeconds > 0.1) { // Cap delta to prevent large jumps
-            timeDeltaSeconds = 0.016; // Use frame time approximation
+        if (timeDeltaSeconds > 0.1) {
+            timeDeltaSeconds = 0.016;
         }
-        double distanceKm = (speed / 3600.0) * timeDeltaSeconds; // km per second * seconds
+        double distanceKm = (speed / 3600.0) * timeDeltaSeconds;
         totalDistance += distanceKm;
         lastDistanceUpdate = currentTime;
+        
+        // Check if player is in oncoming traffic lanes (left side of road)
+        int playerLane = (int)((playerCar.x - ROAD_X) / LANE_WIDTH);
+        boolean wasInOncoming = inOncomingTraffic;
+        inOncomingTraffic = (playerLane < ONCOMING_LANE_COUNT);
+        
+        // Update bonus multiplier based on time in oncoming traffic
+        if (inOncomingTraffic) {
+            oncomingTimeFrames++;
+            if (oncomingTimeFrames > 30) { // After 0.5 seconds at 60fps
+                bonusMultiplier = Math.min(1.5f, bonusMultiplier + 0.005f);
+                bonusAlpha = Math.min(1f, bonusAlpha + 0.02f);
+            }
+        } else {
+            oncomingTimeFrames = 0;
+            bonusMultiplier = Math.max(1.0f, bonusMultiplier - 0.01f);
+            bonusAlpha = Math.max(0f, bonusAlpha - 0.02f);
+        }
+        
+        // Update bonus text timer
+        if (bonusTextTimer > 0) {
+            bonusTextTimer--;
+        }
+        
+        // Show visual cue when entering oncoming traffic
+        if (inOncomingTraffic && !wasInOncoming) {
+            bonusTextTimer = 60; // Show for 1 second
+            createBonusParticles();
+        }
 
         boolean ifSpeed = nitroPressed && nitroFuel > 0;
 
@@ -258,12 +304,32 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             difficulty = Math.min(20, difficulty + 1);
         }
         
+        // Apply bonus multiplier to score accumulation
         if (speed > 0) {
-            score += speed / 10;
+            int pointsEarned = speed / 10;
+            int bonusPoints = (int)(pointsEarned * (bonusMultiplier - 1.0f));
+            score += pointsEarned;
+            bonusScore += bonusPoints;
+            score += bonusPoints; // Add bonus points to total score
         }
         
         if (speed > 50 && frameCount % 5 == 0) {
             createExhaustParticles();
+        }
+    }
+    
+    private void createBonusParticles() {
+        for (int i = 0; i < 20; i++) {
+            double angle = random.nextDouble() * Math.PI * 2;
+            double spd = random.nextDouble() * 3 + 1;
+            particles.add(new Particle(
+                playerCar.x + playerCar.width / 2 + (random.nextDouble() - 0.5) * playerCar.width,
+                playerCar.y + playerCar.height / 2 + (random.nextDouble() - 0.5) * playerCar.height,
+                Math.cos(angle) * spd,
+                Math.sin(angle) * spd,
+                new Color(255, 215, 0, 200), // Gold color for bonus
+                30 + random.nextInt(20)
+            ));
         }
     }
     
@@ -313,21 +379,17 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void resolveOncomingCarCollision(OpponentCar car1, OpponentCar car2) {
-        // Calculate centers
         double car1CenterX = car1.x + car1.width / 2;
         double car1CenterY = car1.y + car1.height / 2;
         double car2CenterX = car2.x + car2.width / 2;
         double car2CenterY = car2.y + car2.height / 2;
         
-        // Calculate overlap
         double overlapX = Math.min(car1.x + car1.width, car2.x + car2.width) - 
                           Math.max(car1.x, car2.x);
         double overlapY = Math.min(car1.y + car1.height, car2.y + car2.height) - 
                           Math.max(car1.y, car2.y);
         
-        // Push cars apart based on smaller overlap axis
         if (overlapX < overlapY) {
-            // Horizontal separation
             if (car1CenterX < car2CenterX) {
                 car1.x -= overlapX / 2;
                 car2.x += overlapX / 2;
@@ -336,17 +398,14 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
                 car2.x -= overlapX / 2;
             }
             
-            // Keep within road bounds
             car1.x = Math.max(ROAD_X + 5, Math.min(ROAD_X + ROAD_WIDTH - car1.width - 5, car1.x));
             car2.x = Math.max(ROAD_X + 5, Math.min(ROAD_X + ROAD_WIDTH - car2.width - 5, car2.x));
             
-            // Adjust speeds based on collision
             double tempSpeed = car1.baseSpeed;
             car1.baseSpeed = Math.max(1, car2.baseSpeed * 0.8);
             car2.baseSpeed = Math.max(1, tempSpeed * 0.8);
             
         } else {
-            // Vertical separation (push apart vertically)
             if (car1CenterY < car2CenterY) {
                 car1.y -= overlapY / 2;
                 car2.y += overlapY / 2;
@@ -356,7 +415,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             }
         }
         
-        // Create collision particles
         createOncomingCollisionParticles(car1.x + car1.width/2, car1.y + car1.height/2);
     }
     
@@ -403,7 +461,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         OpponentCar newCar = new OpponentCar(x - 25, y, lane);
         
-        // Check for collisions with existing oncoming cars at spawn
         boolean collision = false;
         for (OpponentCar existing : oncomingCars) {
             if (Math.abs(existing.y - y) < 100 && Math.abs(existing.x - (x - 25)) < LANE_WIDTH) {
@@ -424,7 +481,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         OpponentCar newCar = new OpponentCar(x - 25, y, lane, true);
         
-        // Check for collisions with existing oncoming cars at spawn
         boolean collision = false;
         for (OpponentCar existing : oncomingCars) {
             if (Math.abs(existing.y - y) < 80 && Math.abs(existing.x - (x - 25)) < LANE_WIDTH) {
@@ -433,7 +489,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             }
         }
         
-        // Also check for collisions with opponent cars
         for (OpponentCar existing : opponentCars) {
             if (Math.abs(existing.y - y) < 100 && Math.abs(existing.x - (x - 25)) < LANE_WIDTH) {
                 collision = true;
@@ -604,6 +659,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         drawRoadMarkings(g2d);
         drawSpeedLines(g2d);
 
+        // Draw oncoming traffic warning overlay
+        if (bonusAlpha > 0) {
+            drawOncomingOverlay(g2d);
+        }
+
         for (SkidMark s : skidMarks) {
             s.draw(g2d);
         }
@@ -620,10 +680,15 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             car.draw(g2d);
         }
         
-        playerCar.draw(g2d, hasShield);
+        playerCar.draw(g2d, hasShield, inOncomingTraffic);
         
         for (Particle particle : particles) {
             particle.draw(g2d);
+        }
+        
+        // Draw bonus multiplier text
+        if (bonusTextTimer > 0 || bonusMultiplier > 1.0f) {
+            drawBonusText(g2d);
         }
         
         g2d.translate(-shakeX, -shakeY);
@@ -632,6 +697,54 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         if (gameOver) {
             drawGameOver(g2d);
+        }
+    }
+    
+    private void drawOncomingOverlay(Graphics2D g2d) {
+        // Draw red warning overlay on the oncoming lanes
+        int alpha = (int)(bonusAlpha * 80);
+        g2d.setColor(new Color(255, 0, 0, alpha));
+        
+        int oncomingWidth = ROAD_WIDTH / 2;
+        g2d.fillRect(ROAD_X, 0, oncomingWidth, SCREEN_HEIGHT);
+        
+        // Draw diagonal stripes for warning effect
+        g2d.setColor(new Color(255, 255, 0, alpha / 2));
+        g2d.setStroke(new BasicStroke(3));
+        for (int y = 0; y < SCREEN_HEIGHT + 40; y += 40) {
+            int offset = (int)((System.currentTimeMillis() / 50) % 40);
+            g2d.drawLine(ROAD_X + offset, y, ROAD_X + oncomingWidth + offset - 20, y + 40);
+        }
+    }
+    
+    private void drawBonusText(Graphics2D g2d) {
+        int alpha = (int)(bonusAlpha * 255);
+        if (bonusTextTimer > 0) {
+            alpha = Math.min(255, alpha + 100);
+        }
+        
+        g2d.setFont(new Font("Arial", Font.BOLD, 28));
+        String bonusText = String.format("BONUS x%.1f", bonusMultiplier);
+        FontMetrics fm = g2d.getFontMetrics();
+        int textX = SCREEN_WIDTH / 2 - fm.stringWidth(bonusText) / 2;
+        int textY = SCREEN_HEIGHT / 3;
+        
+        // Glow effect
+        for (int i = 3; i > 0; i--) {
+            g2d.setColor(new Color(255, 215, 0, alpha / (4 - i)));
+            g2d.drawString(bonusText, textX + i, textY);
+        }
+        
+        g2d.setColor(new Color(255, 215, 0, alpha));
+        g2d.drawString(bonusText, textX, textY);
+        
+        if (bonusMultiplier > 1.0f) {
+            g2d.setFont(new Font("Arial", Font.PLAIN, 16));
+            String subText = "DRIVING IN ONCOMING TRAFFIC!";
+            fm = g2d.getFontMetrics();
+            textX = SCREEN_WIDTH / 2 - fm.stringWidth(subText) / 2;
+            g2d.setColor(new Color(255, 100, 0, alpha));
+            g2d.drawString(subText, textX, textY + 35);
         }
     }
     
@@ -657,6 +770,12 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void drawRoad(Graphics2D g2d) {
         g2d.setColor(ROAD_COLOR);
         g2d.fillRect(ROAD_X, 0, ROAD_WIDTH, SCREEN_HEIGHT);
+        
+        // Highlight oncoming lanes with a subtle red tint
+        if (bonusAlpha > 0.2f) {
+            g2d.setColor(new Color(255, 0, 0, (int)(bonusAlpha * 30)));
+            g2d.fillRect(ROAD_X, 0, ROAD_WIDTH / 2, SCREEN_HEIGHT);
+        }
         
         g2d.setColor(SHOULDER_COLOR);
         g2d.fillRect(ROAD_X - 5, 0, 5, SCREEN_HEIGHT);
@@ -687,7 +806,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         g2d.setStroke(new BasicStroke(2));
         for (RoadMarking marking : roadMarkings) {
             for (int i = 1; i < LANE_COUNT; i++) {
-                if (i == centerLane) continue; // Skip center line
+                if (i == centerLane) continue;
                 int x = ROAD_X + i * LANE_WIDTH;
                 g2d.fillRect(x - 2, (int)(marking.y + roadOffset) % SCREEN_HEIGHT, 4, 20);
             }
@@ -729,7 +848,16 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         g2d.drawString("Score: " + score, 30, 45);
         g2d.drawString("Speed: " + speed + " km/h", 30, 75);
         
-        // Distance counter with realistic formatting
+        // Show bonus multiplier
+        if (bonusMultiplier > 1.0f) {
+            g2d.setColor(new Color(255, 215, 0));
+            g2d.drawString(String.format("BONUS: x%.1f", bonusMultiplier), 30, 105);
+        } else {
+            g2d.setColor(new Color(150, 150, 150));
+            g2d.drawString("BONUS: x1.0", 30, 105);
+        }
+        
+        // Distance counter
         String distanceText;
         if (totalDistance < 1.0) {
             distanceText = String.format("Distance: %.0f m", totalDistance * 1000);
@@ -738,14 +866,15 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         } else {
             distanceText = String.format("Distance: %.1f km", totalDistance);
         }
-        g2d.drawString(distanceText, 30, 105);
+        g2d.setColor(Color.WHITE);
+        g2d.drawString(distanceText, 30, 135);
         
-        g2d.drawString("Lives: ", 30, 135);
+        g2d.drawString("Lives: ", 30, 165);
         for (int i = 0; i < lives; i++) {
             g2d.setColor(Color.RED);
-            g2d.fillOval(95 + i * 25, 120, 15, 15);
+            g2d.fillOval(95 + i * 25, 150, 15, 15);
             g2d.setColor(Color.WHITE);
-            g2d.drawOval(95 + i * 25, 120, 15, 15);
+            g2d.drawOval(95 + i * 25, 150, 15, 15);
         }
         
         // Nitro gauge
@@ -794,31 +923,40 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         textX = (SCREEN_WIDTH - fm.stringWidth(scoreText)) / 2;
         g2d.drawString(scoreText, textX, SCREEN_HEIGHT / 2 - 10);
         
-        // Show total distance on game over screen
+        // Show bonus information
+        if (bonusScore > 0) {
+            g2d.setFont(new Font("Arial", Font.BOLD, 28));
+            g2d.setColor(new Color(255, 215, 0));
+            String bonusText = String.format("Bonus Points: +%d", bonusScore);
+            fm = g2d.getFontMetrics();
+            textX = (SCREEN_WIDTH - fm.stringWidth(bonusText)) / 2;
+            g2d.drawString(bonusText, textX, SCREEN_HEIGHT / 2 + 30);
+        }
+        
         String distanceText;
         if (totalDistance < 1.0) {
             distanceText = String.format("Distance Traveled: %.0f meters", totalDistance * 1000);
         } else {
             distanceText = String.format("Distance Traveled: %.2f kilometers", totalDistance);
         }
-        g2d.setFont(new Font("Arial", Font.BOLD, 28));
+        g2d.setFont(new Font("Arial", Font.BOLD, 24));
         g2d.setColor(new Color(0, 255, 255));
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(distanceText)) / 2;
-        g2d.drawString(distanceText, textX, SCREEN_HEIGHT / 2 + 30);
+        g2d.drawString(distanceText, textX, SCREEN_HEIGHT / 2 + 70);
         
         g2d.setFont(new Font("Arial", Font.PLAIN, 24));
         g2d.setColor(Color.YELLOW);
         String restartText = "Press ENTER to restart";
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(restartText)) / 2;
-        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 90);
+        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 120);
         
         g2d.setColor(new Color(0, 255, 255));
         String highScoreText = "Press H to view High Scores";
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(highScoreText)) / 2;
-        g2d.drawString(highScoreText, textX, SCREEN_HEIGHT / 2 + 130);
+        g2d.drawString(highScoreText, textX, SCREEN_HEIGHT / 2 + 160);
     }
     
     @Override
@@ -914,7 +1052,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             for (int j = oncomingCars.size() - 1; j >= 0; j--) {
                 OpponentCar oncoming = oncomingCars.get(j);
                 if (normal.getBounds().intersects(oncoming.getBounds())) {
-                    // Both cars crash and explode
                     createExplosion(normal.x + normal.width/2, normal.y + normal.height/2);
                     createExplosion(oncoming.x + oncoming.width/2, oncoming.y + oncoming.height/2);
                     cameraShake = 15;
@@ -1012,10 +1149,16 @@ class PlayerCar {
         return new Rectangle((int)x + 5, (int)y + 5, width - 10, height - 10);
     }
     
-    public void draw(Graphics2D g2d, boolean hasShield) {
+    public void draw(Graphics2D g2d, boolean hasShield, boolean inOncomingTraffic) {
         Graphics2D g = (Graphics2D) g2d.create();
         g.rotate(Math.toRadians(tiltAngle), x + width / 2.0, y + height / 2.0);
 
+        // Add glow effect when in oncoming traffic
+        if (inOncomingTraffic) {
+            g.setColor(new Color(255, 215, 0, 80));
+            g.fillRoundRect((int)x - 3, (int)y - 3, width + 6, height + 6, 15, 15);
+        }
+        
         g.setColor(new Color(0, 0, 0, 100));
         g.fillRoundRect((int)x + 3, (int)y + 3, width, height, 10, 10);
         
@@ -1055,6 +1198,7 @@ class PlayerCar {
     }
 }
 
+// The rest of the classes (OpponentCar, RoadMarking, Particle, PowerUp, SkidMark) remain the same as in the previous version...
 class OpponentCar {
     double x, y;
     int width = 70;
@@ -1084,7 +1228,7 @@ class OpponentCar {
         this.oncoming = oncoming;
         this.baseSpeed = random.nextDouble() * 3 + 1;
         if (oncoming) {
-            this.baseSpeed = (random.nextDouble() * 3 + 2) * 2; // Double speed
+            this.baseSpeed = (random.nextDouble() * 3 + 2) * 2;
         }
         this.color = colors[random.nextInt(colors.length)];
     }
