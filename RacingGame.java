@@ -42,9 +42,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     
     private PlayerCar playerCar;
     private List<OpponentCar> opponentCars;
-
     private List<OpponentCar> oncomingCars;
-
     private List<RoadMarking> roadMarkings;
     private List<Particle> particles;
     private List<PowerUp> powerUps;
@@ -100,9 +98,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void initializeGame() {
         playerCar = new PlayerCar(SCREEN_WIDTH / 2 - 25, SCREEN_HEIGHT - 150);
         opponentCars = new ArrayList<>();
-
         oncomingCars = new ArrayList<>();
-
         roadMarkings = new ArrayList<>();
         particles = new ArrayList<>();
         powerUps = new ArrayList<>();
@@ -211,14 +207,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
 
         updateOpponents();
-
         updateOncomingCars();
-
         updatePowerUps();
         updateParticles();
         checkCollisions();
         checkOpponentCollisions();
-
         checkOncomingCollision();
         
         if (hasShield) {
@@ -277,14 +270,91 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         double scrollSpeed = speed / 10.0;
         double oncomingSpeedMultiplier = 1.5;
         
+        // Update positions
+        for (OpponentCar car : oncomingCars) {
+            car.y += (scrollSpeed + car.baseSpeed) * oncomingSpeedMultiplier;
+        }
+        
+        // Check and resolve collisions between oncoming cars
+        for (int i = 0; i < oncomingCars.size(); i++) {
+            for (int j = i + 1; j < oncomingCars.size(); j++) {
+                OpponentCar car1 = oncomingCars.get(i);
+                OpponentCar car2 = oncomingCars.get(j);
+                
+                if (car1.getBounds().intersects(car2.getBounds())) {
+                    resolveOncomingCarCollision(car1, car2);
+                }
+            }
+        }
+        
+        // Remove cars that have moved off screen
         for (int i = oncomingCars.size() - 1; i >= 0; i--) {
             OpponentCar car = oncomingCars.get(i);
-
-            car.y += (scrollSpeed + car.baseSpeed)  * oncomingSpeedMultiplier;
-            
-            if (car.y + car.height < -100) {
+            if (car.y + car.height < -100 || car.y > SCREEN_HEIGHT + 200) {
                 oncomingCars.remove(i);
             }
+        }
+    }
+    
+    private void resolveOncomingCarCollision(OpponentCar car1, OpponentCar car2) {
+        // Calculate centers
+        double car1CenterX = car1.x + car1.width / 2;
+        double car1CenterY = car1.y + car1.height / 2;
+        double car2CenterX = car2.x + car2.width / 2;
+        double car2CenterY = car2.y + car2.height / 2;
+        
+        // Calculate overlap
+        double overlapX = Math.min(car1.x + car1.width, car2.x + car2.width) - 
+                          Math.max(car1.x, car2.x);
+        double overlapY = Math.min(car1.y + car1.height, car2.y + car2.height) - 
+                          Math.max(car1.y, car2.y);
+        
+        // Push cars apart based on smaller overlap axis
+        if (overlapX < overlapY) {
+            // Horizontal separation
+            if (car1CenterX < car2CenterX) {
+                car1.x -= overlapX / 2;
+                car2.x += overlapX / 2;
+            } else {
+                car1.x += overlapX / 2;
+                car2.x -= overlapX / 2;
+            }
+            
+            // Keep within road bounds
+            car1.x = Math.max(ROAD_X + 5, Math.min(ROAD_X + ROAD_WIDTH - car1.width - 5, car1.x));
+            car2.x = Math.max(ROAD_X + 5, Math.min(ROAD_X + ROAD_WIDTH - car2.width - 5, car2.x));
+            
+            // Adjust speeds based on collision
+            double tempSpeed = car1.baseSpeed;
+            car1.baseSpeed = Math.max(1, car2.baseSpeed * 0.8);
+            car2.baseSpeed = Math.max(1, tempSpeed * 0.8);
+            
+        } else {
+            // Vertical separation (push apart vertically)
+            if (car1CenterY < car2CenterY) {
+                car1.y -= overlapY / 2;
+                car2.y += overlapY / 2;
+            } else {
+                car1.y += overlapY / 2;
+                car2.y -= overlapY / 2;
+            }
+        }
+        
+        // Create collision particles
+        createOncomingCollisionParticles(car1.x + car1.width/2, car1.y + car1.height/2);
+    }
+    
+    private void createOncomingCollisionParticles(double x, double y) {
+        for (int i = 0; i < 10; i++) {
+            double angle = random.nextDouble() * Math.PI * 2;
+            double spd = random.nextDouble() * 2 + 1;
+            particles.add(new Particle(
+                x, y,
+                Math.cos(angle) * spd,
+                Math.sin(angle) * spd,
+                new Color(255, random.nextInt(100) + 155, 0, 200),
+                15 + random.nextInt(10)
+            ));
         }
     }
     
@@ -314,15 +384,51 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         int lane = random.nextInt(LANE_COUNT / 2, LANE_COUNT);
         int x = ROAD_X + lane * LANE_WIDTH + LANE_WIDTH / 2;
         int y = -100 - (int)(Math.random() * 100);
-        opponentCars.add(new OpponentCar(x - 25, y, lane));
+        
+        OpponentCar newCar = new OpponentCar(x - 25, y, lane);
+        
+        // Check for collisions with existing oncoming cars at spawn
+        boolean collision = false;
+        for (OpponentCar existing : oncomingCars) {
+            if (Math.abs(existing.y - y) < 100 && Math.abs(existing.x - (x - 25)) < LANE_WIDTH) {
+                collision = true;
+                break;
+            }
+        }
+        
+        if (!collision) {
+            opponentCars.add(newCar);
+        }
     }
 
     private void spawnOncomingCar() {
         int lane = random.nextInt(LANE_COUNT / 2);
         int x = ROAD_X + lane * LANE_WIDTH + LANE_WIDTH / 2;
         int y = -100 - random.nextInt(200);
-        oncomingCars.add(new OpponentCar(x - 25, y, lane, true));
-}
+        
+        OpponentCar newCar = new OpponentCar(x - 25, y, lane, true);
+        
+        // Check for collisions with existing oncoming cars at spawn
+        boolean collision = false;
+        for (OpponentCar existing : oncomingCars) {
+            if (Math.abs(existing.y - y) < 80 && Math.abs(existing.x - (x - 25)) < LANE_WIDTH) {
+                collision = true;
+                break;
+            }
+        }
+        
+        // Also check for collisions with opponent cars
+        for (OpponentCar existing : opponentCars) {
+            if (Math.abs(existing.y - y) < 100 && Math.abs(existing.x - (x - 25)) < LANE_WIDTH) {
+                collision = true;
+                break;
+            }
+        }
+        
+        if (!collision) {
+            oncomingCars.add(newCar);
+        }
+    }
     
     private void spawnPowerUp() {
         int lane = random.nextInt(LANE_COUNT);
@@ -868,26 +974,24 @@ class PlayerCar {
 }
 
 class OpponentCar {
-        double x, y;
-        int width = 70;
-        int height = 90;
-        int lane;
-
-        boolean oncoming;
-
-        double baseSpeed;
-        Color color;
-        Random random = new Random();
-        
-        static Color[] colors = {
-            new Color(0, 100, 200),
-            new Color(200, 100, 0),
-            new Color(100, 200, 0),
-            new Color(200, 0, 200),
-            new Color(200, 200, 0),
-        };
-        
-        public OpponentCar(double x, double y, int lane) {
+    double x, y;
+    int width = 70;
+    int height = 90;
+    int lane;
+    boolean oncoming;
+    double baseSpeed;
+    Color color;
+    Random random = new Random();
+    
+    static Color[] colors = {
+        new Color(0, 100, 200),
+        new Color(200, 100, 0),
+        new Color(100, 200, 0),
+        new Color(200, 0, 200),
+        new Color(200, 200, 0),
+    };
+    
+    public OpponentCar(double x, double y, int lane) {
         this(x, y, lane, false);
     }
 
