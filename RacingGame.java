@@ -36,10 +36,11 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     private static final int ROAD_X = (SCREEN_WIDTH - ROAD_WIDTH) / 2;
     private static final int LANE_COUNT = 8;
     private static final int LANE_WIDTH = ROAD_WIDTH / LANE_COUNT;
-    private static final int ONCOMING_LANE_COUNT = LANE_COUNT / 2; // First 4 lanes are oncoming
+    private static final int ONCOMING_LANE_COUNT = LANE_COUNT / 2;
 
     private String username;     
     private String scoresFile;
+    private int personalBest = 0;
     
     private PlayerCar playerCar;
     private List<OpponentCar> opponentCars;
@@ -99,12 +100,35 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     public GamePanel(String username, String scoresFile) {
         this.username = username;
         this.scoresFile = scoresFile;
+        
+        // Load personal best for this user
+        loadPersonalBest();
 
         setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setBackground(Color.BLACK);
         setFocusable(true);
         addKeyListener(this);
         initializeGame();
+    }
+    
+    private void loadPersonalBest() {
+        java.util.List<String[]> scores = ScoreManager.loadAllScores(scoresFile);
+        for (String[] entry : scores) {
+            if (entry[0].equals(username)) {
+                try {
+                    personalBest = Integer.parseInt(entry[1]);
+                    break;
+                } catch (NumberFormatException e) {
+                    personalBest = 0;
+                }
+            }
+        }
+    }
+    
+    private void updatePersonalBest() {
+        if (score > personalBest) {
+            personalBest = score;
+        }
     }
     
     private void initializeGame() {
@@ -178,7 +202,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         // Update bonus multiplier based on time in oncoming traffic
         if (inOncomingTraffic) {
             oncomingTimeFrames++;
-            if (oncomingTimeFrames > 30) { // After 0.5 seconds at 60fps
+            if (oncomingTimeFrames > 30) {
                 bonusMultiplier = Math.min(1.5f, bonusMultiplier + 0.005f);
                 bonusAlpha = Math.min(1f, bonusAlpha + 0.02f);
             }
@@ -195,7 +219,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         // Show visual cue when entering oncoming traffic
         if (inOncomingTraffic && !wasInOncoming) {
-            bonusTextTimer = 60; // Show for 1 second
+            bonusTextTimer = 60;
             createBonusParticles();
         }
 
@@ -310,12 +334,15 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             int bonusPoints = (int)(pointsEarned * (bonusMultiplier - 1.0f));
             score += pointsEarned;
             bonusScore += bonusPoints;
-            score += bonusPoints; // Add bonus points to total score
+            score += bonusPoints;
         }
         
         if (speed > 50 && frameCount % 5 == 0) {
             createExhaustParticles();
         }
+        
+        // Update personal best
+        updatePersonalBest();
     }
     
     private void createBonusParticles() {
@@ -327,7 +354,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
                 playerCar.y + playerCar.height / 2 + (random.nextDouble() - 0.5) * playerCar.height,
                 Math.cos(angle) * spd,
                 Math.sin(angle) * spd,
-                new Color(255, 215, 0, 200), // Gold color for bonus
+                new Color(255, 215, 0, 200),
                 30 + random.nextInt(20)
             ));
         }
@@ -352,12 +379,10 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         double scrollSpeed = speed / 10.0;
         double oncomingSpeedMultiplier = 1.5;
         
-        // Update positions
         for (OpponentCar car : oncomingCars) {
             car.y += (scrollSpeed + car.baseSpeed) * oncomingSpeedMultiplier;
         }
         
-        // Check and resolve collisions between oncoming cars
         for (int i = 0; i < oncomingCars.size(); i++) {
             for (int j = i + 1; j < oncomingCars.size(); j++) {
                 OpponentCar car1 = oncomingCars.get(i);
@@ -369,7 +394,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             }
         }
         
-        // Remove cars that have moved off screen
         for (int i = oncomingCars.size() - 1; i >= 0; i--) {
             OpponentCar car = oncomingCars.get(i);
             if (car.y + car.height < -100 || car.y > SCREEN_HEIGHT + 200) {
@@ -659,7 +683,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         drawRoadMarkings(g2d);
         drawSpeedLines(g2d);
 
-        // Draw oncoming traffic warning overlay
         if (bonusAlpha > 0) {
             drawOncomingOverlay(g2d);
         }
@@ -686,7 +709,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             particle.draw(g2d);
         }
         
-        // Draw bonus multiplier text
         if (bonusTextTimer > 0 || bonusMultiplier > 1.0f) {
             drawBonusText(g2d);
         }
@@ -701,14 +723,12 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void drawOncomingOverlay(Graphics2D g2d) {
-        // Draw red warning overlay on the oncoming lanes
         int alpha = (int)(bonusAlpha * 80);
         g2d.setColor(new Color(255, 0, 0, alpha));
         
         int oncomingWidth = ROAD_WIDTH / 2;
         g2d.fillRect(ROAD_X, 0, oncomingWidth, SCREEN_HEIGHT);
         
-        // Draw diagonal stripes for warning effect
         g2d.setColor(new Color(255, 255, 0, alpha / 2));
         g2d.setStroke(new BasicStroke(3));
         for (int y = 0; y < SCREEN_HEIGHT + 40; y += 40) {
@@ -729,7 +749,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         int textX = SCREEN_WIDTH / 2 - fm.stringWidth(bonusText) / 2;
         int textY = SCREEN_HEIGHT / 3;
         
-        // Glow effect
         for (int i = 3; i > 0; i--) {
             g2d.setColor(new Color(255, 215, 0, alpha / (4 - i)));
             g2d.drawString(bonusText, textX + i, textY);
@@ -771,7 +790,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         g2d.setColor(ROAD_COLOR);
         g2d.fillRect(ROAD_X, 0, ROAD_WIDTH, SCREEN_HEIGHT);
         
-        // Highlight oncoming lanes with a subtle red tint
         if (bonusAlpha > 0.2f) {
             g2d.setColor(new Color(255, 0, 0, (int)(bonusAlpha * 30)));
             g2d.fillRect(ROAD_X, 0, ROAD_WIDTH / 2, SCREEN_HEIGHT);
@@ -792,7 +810,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void drawRoadMarkings(Graphics2D g2d) {
-        // Draw double yellow center line
         int centerLane = LANE_COUNT / 2;
         int centerX = ROAD_X + centerLane * LANE_WIDTH;
         
@@ -801,7 +818,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         g2d.fillRect(centerX - 6, 0, 3, SCREEN_HEIGHT);
         g2d.fillRect(centerX + 3, 0, 3, SCREEN_HEIGHT);
         
-        // Draw dashed white lane lines for other lanes
         g2d.setColor(ROAD_MARKING_COLOR);
         g2d.setStroke(new BasicStroke(2));
         for (RoadMarking marking : roadMarkings) {
@@ -812,7 +828,6 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
             }
         }
         
-        // Solid edge lines
         g2d.setColor(Color.WHITE);
         g2d.fillRect(ROAD_X + 10, 0, 3, SCREEN_HEIGHT);
         g2d.fillRect(ROAD_X + ROAD_WIDTH - 13, 0, 3, SCREEN_HEIGHT);
@@ -836,52 +851,60 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void drawHUD(Graphics2D g2d) {
-        // Main HUD panel
-        g2d.setColor(new Color(0, 0, 0, 150));
-        g2d.fillRoundRect(10, 10, 280, 150, 15, 15);
-        g2d.setColor(new Color(255, 255, 255, 200));
+        // Larger HUD panel to fit all stats
+        g2d.setColor(new Color(0, 0, 0, 180));
+        g2d.fillRoundRect(10, 10, 320, 200, 15, 15);
+        g2d.setColor(new Color(0, 220, 255, 200));
         g2d.setStroke(new BasicStroke(2));
-        g2d.drawRoundRect(10, 10, 280, 150, 15, 15);
+        g2d.drawRoundRect(10, 10, 320, 200, 15, 15);
         
-        g2d.setFont(new Font("Arial", Font.BOLD, 20));
+        g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
         g2d.setColor(Color.WHITE);
-        g2d.drawString("Score: " + score, 30, 45);
-        g2d.drawString("Speed: " + speed + " km/h", 30, 75);
+        g2d.drawString("SCORE: " + score, 25, 45);
+        g2d.drawString("SPEED: " + speed + " km/h", 25, 75);
         
-        // Show bonus multiplier
+        // Bonus multiplier
         if (bonusMultiplier > 1.0f) {
             g2d.setColor(new Color(255, 215, 0));
-            g2d.drawString(String.format("BONUS: x%.1f", bonusMultiplier), 30, 105);
+            g2d.drawString(String.format("BONUS: x%.1f", bonusMultiplier), 25, 105);
         } else {
             g2d.setColor(new Color(150, 150, 150));
-            g2d.drawString("BONUS: x1.0", 30, 105);
+            g2d.drawString("BONUS: x1.0", 25, 105);
         }
         
         // Distance counter
         String distanceText;
         if (totalDistance < 1.0) {
-            distanceText = String.format("Distance: %.0f m", totalDistance * 1000);
+            distanceText = String.format("DIST: %.0f m", totalDistance * 1000);
         } else if (totalDistance < 10.0) {
-            distanceText = String.format("Distance: %.2f km", totalDistance);
+            distanceText = String.format("DIST: %.2f km", totalDistance);
         } else {
-            distanceText = String.format("Distance: %.1f km", totalDistance);
+            distanceText = String.format("DIST: %.1f km", totalDistance);
         }
         g2d.setColor(Color.WHITE);
-        g2d.drawString(distanceText, 30, 135);
+        g2d.drawString(distanceText, 25, 135);
         
-        g2d.drawString("Lives: ", 30, 165);
+        // Personal Best
+        g2d.setColor(new Color(255, 215, 0));
+        g2d.drawString("BEST: " + personalBest, 25, 165);
+        
+        // Lives
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("LIVES:", 25, 195);
         for (int i = 0; i < lives; i++) {
             g2d.setColor(Color.RED);
-            g2d.fillOval(95 + i * 25, 150, 15, 15);
+            g2d.fillOval(95 + i * 25, 180, 15, 15);
             g2d.setColor(Color.WHITE);
-            g2d.drawOval(95 + i * 25, 150, 15, 15);
+            g2d.drawOval(95 + i * 25, 180, 15, 15);
         }
         
         // Nitro gauge
         int nitroX = SCREEN_WIDTH - 130;
         int nitroY = 20;
-        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.setColor(new Color(0, 0, 0, 180));
         g2d.fillRoundRect(nitroX - 5, nitroY - 5, 130, 30, 10, 10);
+        g2d.setColor(new Color(0, 220, 255, 150));
+        g2d.drawRoundRect(nitroX - 5, nitroY - 5, 130, 30, 10, 10);
         
         g2d.setColor(Color.GRAY);
         g2d.fillRect(nitroX, nitroY, 120, 20);
@@ -895,13 +918,13 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         g2d.fillRect(nitroX, nitroY, (int)(nitroFuel * 1.2), 20);
         
         g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+        g2d.setFont(new Font("Monospaced", Font.BOLD, 14));
         g2d.drawString("NITRO", nitroX + 38, nitroY + 15);
         
         if (hasShield) {
-            g2d.setColor(new Color(0, 255, 255, 180));
-            g2d.setFont(new Font("Arial", Font.BOLD, 18));
-            g2d.drawString("SHIELD ACTIVE", SCREEN_WIDTH - 200, SCREEN_HEIGHT - 20);
+            g2d.setColor(new Color(0, 255, 255, 200));
+            g2d.setFont(new Font("Arial", Font.BOLD, 20));
+            g2d.drawString("SHIELD ACTIVE", SCREEN_WIDTH - 220, SCREEN_HEIGHT - 30);
         }
     }
     
@@ -923,40 +946,57 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         textX = (SCREEN_WIDTH - fm.stringWidth(scoreText)) / 2;
         g2d.drawString(scoreText, textX, SCREEN_HEIGHT / 2 - 10);
         
+        // Show personal best comparison
+        if (score >= personalBest && personalBest > 0) {
+            g2d.setFont(new Font("Arial", Font.BOLD, 28));
+            g2d.setColor(new Color(0, 255, 0));
+            String newBestText = "NEW PERSONAL BEST!";
+            fm = g2d.getFontMetrics();
+            textX = (SCREEN_WIDTH - fm.stringWidth(newBestText)) / 2;
+            g2d.drawString(newBestText, textX, SCREEN_HEIGHT / 2 + 30);
+        } else if (personalBest > 0) {
+            g2d.setFont(new Font("Arial", Font.BOLD, 24));
+            g2d.setColor(new Color(255, 215, 0));
+            String bestText = "Personal Best: " + personalBest;
+            fm = g2d.getFontMetrics();
+            textX = (SCREEN_WIDTH - fm.stringWidth(bestText)) / 2;
+            g2d.drawString(bestText, textX, SCREEN_HEIGHT / 2 + 30);
+        }
+        
         // Show bonus information
         if (bonusScore > 0) {
-            g2d.setFont(new Font("Arial", Font.BOLD, 28));
+            g2d.setFont(new Font("Arial", Font.BOLD, 24));
             g2d.setColor(new Color(255, 215, 0));
             String bonusText = String.format("Bonus Points: +%d", bonusScore);
             fm = g2d.getFontMetrics();
             textX = (SCREEN_WIDTH - fm.stringWidth(bonusText)) / 2;
-            g2d.drawString(bonusText, textX, SCREEN_HEIGHT / 2 + 30);
+            g2d.drawString(bonusText, textX, SCREEN_HEIGHT / 2 + 70);
         }
         
         String distanceText;
         if (totalDistance < 1.0) {
-            distanceText = String.format("Distance Traveled: %.0f meters", totalDistance * 1000);
+            distanceText = String.format("Distance: %.0f meters", totalDistance * 1000);
         } else {
-            distanceText = String.format("Distance Traveled: %.2f kilometers", totalDistance);
+            distanceText = String.format("Distance: %.2f kilometers", totalDistance);
         }
-        g2d.setFont(new Font("Arial", Font.BOLD, 24));
+        g2d.setFont(new Font("Arial", Font.BOLD, 20));
         g2d.setColor(new Color(0, 255, 255));
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(distanceText)) / 2;
-        g2d.drawString(distanceText, textX, SCREEN_HEIGHT / 2 + 70);
+        g2d.drawString(distanceText, textX, SCREEN_HEIGHT / 2 + 110);
         
         g2d.setFont(new Font("Arial", Font.PLAIN, 24));
         g2d.setColor(Color.YELLOW);
         String restartText = "Press ENTER to restart";
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(restartText)) / 2;
-        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 120);
+        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 160);
         
         g2d.setColor(new Color(0, 255, 255));
         String highScoreText = "Press H to view High Scores";
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(highScoreText)) / 2;
-        g2d.drawString(highScoreText, textX, SCREEN_HEIGHT / 2 + 160);
+        g2d.drawString(highScoreText, textX, SCREEN_HEIGHT / 2 + 200);
     }
     
     @Override
@@ -1153,7 +1193,6 @@ class PlayerCar {
         Graphics2D g = (Graphics2D) g2d.create();
         g.rotate(Math.toRadians(tiltAngle), x + width / 2.0, y + height / 2.0);
 
-        // Add glow effect when in oncoming traffic
         if (inOncomingTraffic) {
             g.setColor(new Color(255, 215, 0, 80));
             g.fillRoundRect((int)x - 3, (int)y - 3, width + 6, height + 6, 15, 15);
@@ -1198,7 +1237,6 @@ class PlayerCar {
     }
 }
 
-// The rest of the classes (OpponentCar, RoadMarking, Particle, PowerUp, SkidMark) remain the same as in the previous version...
 class OpponentCar {
     double x, y;
     int width = 70;
