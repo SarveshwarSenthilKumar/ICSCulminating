@@ -541,6 +541,32 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
     
+    private void showHighScoresDialog() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("╔══════════════════════════════╗\n");
+        sb.append("║        HALL  OF  FAME        ║\n");
+        sb.append("╠══════════════════════════════╣\n");
+        java.util.List<String[]> scores = ScoreManager.loadAllScores(scoresFile);
+        if (scores.isEmpty()) {
+            sb.append("║   No scores recorded yet.    ║\n");
+        } else {
+            int rank = 1;
+            for (String[] entry : scores) {
+                String line = String.format("║ %2d. %-12s %10s ║", rank++, entry[0], entry[1]);
+                sb.append(line).append("\n");
+                if (rank > 10) break;
+            }
+        }
+        sb.append("╚══════════════════════════════╝");
+        
+        JTextArea ta = new JTextArea(sb.toString());
+        ta.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        ta.setEditable(false);
+        ta.setBackground(new Color(5, 5, 20));
+        ta.setForeground(new Color(0, 220, 255));
+        JOptionPane.showMessageDialog(this, ta, "High Scores", JOptionPane.PLAIN_MESSAGE);
+    }
+    
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -721,7 +747,7 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
     
     private void drawGameOver(Graphics2D g2d) {
-        g2d.setColor(new Color(0, 0, 0, 180));
+        g2d.setColor(new Color(0, 0, 0, 200));
         g2d.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         
         g2d.setFont(new Font("Arial", Font.BOLD, 72));
@@ -729,21 +755,27 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
         String text = "GAME OVER";
         FontMetrics fm = g2d.getFontMetrics();
         int textX = (SCREEN_WIDTH - fm.stringWidth(text)) / 2;
-        g2d.drawString(text, textX, SCREEN_HEIGHT / 2 - 50);
+        g2d.drawString(text, textX, SCREEN_HEIGHT / 2 - 80);
         
         g2d.setFont(new Font("Arial", Font.BOLD, 36));
         g2d.setColor(Color.WHITE);
         String scoreText = "Final Score: " + score;
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(scoreText)) / 2;
-        g2d.drawString(scoreText, textX, SCREEN_HEIGHT / 2 + 20);
+        g2d.drawString(scoreText, textX, SCREEN_HEIGHT / 2 - 10);
         
         g2d.setFont(new Font("Arial", Font.PLAIN, 24));
         g2d.setColor(Color.YELLOW);
         String restartText = "Press ENTER to restart";
         fm = g2d.getFontMetrics();
         textX = (SCREEN_WIDTH - fm.stringWidth(restartText)) / 2;
-        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 70);
+        g2d.drawString(restartText, textX, SCREEN_HEIGHT / 2 + 40);
+        
+        g2d.setColor(new Color(0, 255, 255));
+        String highScoreText = "Press H to view High Scores";
+        fm = g2d.getFontMetrics();
+        textX = (SCREEN_WIDTH - fm.stringWidth(highScoreText)) / 2;
+        g2d.drawString(highScoreText, textX, SCREEN_HEIGHT / 2 + 80);
     }
     
     @Override
@@ -770,19 +802,26 @@ class GamePanel extends JPanel implements ActionListener, KeyListener {
                 nitroPressed = true;
                 break;
             case KeyEvent.VK_P:
-                if (paused) {
-                    gameRunning = true;
-                    gameTimer.start();
-                } else {
-                    gameRunning = false;
-                    gameTimer.stop();
+                if (!gameOver) {
+                    if (paused) {
+                        gameRunning = true;
+                        gameTimer.start();
+                    } else {
+                        gameRunning = false;
+                        gameTimer.stop();
+                    }
+                    paused = !paused;
                 }
-                paused = !paused;
                 break;
             case KeyEvent.VK_ENTER:
                 if (gameOver) {
                     initializeGame();
                     startGame();
+                }
+                break;
+            case KeyEvent.VK_H:
+                if (gameOver) {
+                    showHighScoresDialog();
                 }
                 break;
         }
