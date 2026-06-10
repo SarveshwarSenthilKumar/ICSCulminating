@@ -5,12 +5,11 @@ Add traffic jams and add multiple cars on screen - Done
 Add a pause feature - Done
 Add a proper menu - Done
 Add score saving system - Done
-Add check high score feature
+Add check high score feature - Done
 Fix score saving system - Done
 Add music - Added MusicPlayer but cannot import music
-Add button to view high scores at end page
-Add personal best to the end menu and normal screen
-Make sure collision detection works for same on oncoming side
+Add button to view high scores at end page - Done
+Make sure collision detection works for same on oncoming side - Done
 Add instructions of how to play to the menu - Done
 Add distance counter
 Add bonus for time spent in oncoming traffic
