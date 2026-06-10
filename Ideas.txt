@@ -11,8 +11,9 @@ Add music - Added MusicPlayer but cannot import music
 Add button to view high scores at end page - Done
 Make sure collision detection works for same on oncoming side - Done
 Add instructions of how to play to the menu - Done
-Add distance counter
-Add bonus for time spent in oncoming traffic
+Add distance counter - Done
+Add personal best counter - Done
+Add bonus for time spent in oncoming  - Done
 Add tilt when turning - Done
 Add skid marks when braking - Done
 Update spawning rate of opponent cars - Done
