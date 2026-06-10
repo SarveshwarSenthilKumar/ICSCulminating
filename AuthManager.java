@@ -1,4 +1,3 @@
-
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -72,7 +71,7 @@ public class AuthManager {
         JFrame frame = new JFrame("Cannonball Run: Highway Chase — Login");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
-        frame.setSize(576, 644); // Slightly taller to accommodate the mute text safely
+        frame.setSize(576, 680); // Taller to accommodate instructions button
         frame.setLocationRelativeTo(null);
         frame.setContentPane(buildLoginPanel(frame));
         
@@ -127,17 +126,19 @@ public class AuthManager {
         root.add(form, BorderLayout.CENTER);
 
         // ── Buttons ──
-        JPanel btnPanel = new JPanel(new GridLayout(2,1,0,10));
+        JPanel btnPanel = new JPanel(new GridLayout(3,1,0,10)); // Changed to 3 rows
         btnPanel.setOpaque(false);
         btnPanel.setBorder(new EmptyBorder(20,0,0,0));
 
         JButton loginBtn    = styledButton("▶  LOGIN",    COL_ACCENT);
         JButton registerBtn = styledButton("✦  REGISTER", COL_ACCENT2);
+        JButton instructionsBtn = styledButton("❓  INSTRUCTIONS", new Color(100, 200, 100)); // Green accent
 
         loginBtn.addActionListener(e -> handleLogin(frame, userField.getText().trim(),
                 new String(passField.getPassword())));
         registerBtn.addActionListener(e -> handleRegister(frame, userField.getText().trim(),
                 new String(passField.getPassword())));
+        instructionsBtn.addActionListener(e -> showInstructions(frame));
 
         // Allow Enter key to trigger login
         passField.addActionListener(e -> loginBtn.doClick());
@@ -148,6 +149,7 @@ public class AuthManager {
 
         btnPanel.add(loginBtn);
         btnPanel.add(registerBtn);
+        btnPanel.add(instructionsBtn); // Instructions button added
 
         JPanel south = new JPanel(new BorderLayout(0,8));
         south.setOpaque(false);
@@ -194,6 +196,94 @@ public class AuthManager {
                 muteLabel.setForeground(new Color(120, 120, 150));
             }
         }
+    }
+
+    // ── Instructions Display ─────────────────────────────────────────────────
+
+    /**
+     * Displays a comprehensive instructions dialog with all game controls.
+     *
+     * @param frame parent frame for the dialog
+     */
+    private void showInstructions(JFrame frame) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(COL_BG);
+        panel.setBorder(new EmptyBorder(15, 20, 15, 20));
+
+        // Title
+        JLabel titleLabel = neonLabel("═══ CONTROLS & INSTRUCTIONS ═══", 
+                                      new Font("Monospaced", Font.BOLD, 16), COL_ACCENT);
+        titleLabel.setBorder(new EmptyBorder(0, 0, 15, 0));
+        
+        // Instructions text area
+        JTextArea instructions = new JTextArea();
+        instructions.setEditable(false);
+        instructions.setBackground(COL_PANEL);
+        instructions.setForeground(COL_TEXT);
+        instructions.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        instructions.setBorder(BorderFactory.createLineBorder(COL_ACCENT, 1));
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("╔══════════════════════════════════════════════════════════╗\n");
+        sb.append("║                    GAME CONTROLS                         ║\n");
+        sb.append("╠══════════════════════════════════════════════════════════╣\n");
+        sb.append("║                                                          ║\n");
+        sb.append("║  🎮  MOVEMENT                                            ║\n");
+        sb.append("║      ←  LEFT ARROW / A    :  Move car left               ║\n");
+        sb.append("║      →  RIGHT ARROW / D    :  Move car right             ║\n");
+        sb.append("║      →  UP ARROW / W   :  Accelerate                     ║\n");
+        sb.append("║      →  DOWN ARROW / S    :  Brake/Decelerate            ║\n");
+
+        sb.append("║                                                          ║\n");
+        sb.append("║  🚗  GAMEPLAY                                            ║\n");
+        sb.append("║      P                 :  Pause/Unpause game             ║\n");
+        sb.append("║      Enter          :  Restart game                      ║\n");
+        sb.append("║      Space         :  Hold to activate nitro             ║\n");
+
+        sb.append("║                                                          ║\n");
+        sb.append("║  🔊  AUDIO                                               ║\n");
+        sb.append("║      M            :  Mute / Unmute background music      ║\n");
+        sb.append("║                                                          ║\n");
+        sb.append("║  🎯  OBJECTIVE                                           ║\n");
+        sb.append("║      • Avoid oncoming enemy vehicles                     ║\n");
+        sb.append("║      • Survive as long as possible                       ║\n");
+        sb.append("║      • High scores are saved after each game             ║\n");
+        sb.append("║                                                          ║\n");
+        sb.append("║  💡  TIPS                                                ║\n");
+        sb.append("║      • Enemies appear faster as time progresses          ║\n");
+        sb.append("║      • Collision without lives ends the game                           ║\n");
+        sb.append("║                                                          ║\n");
+        sb.append("╚══════════════════════════════════════════════════════════╝\n");
+        
+        instructions.setText(sb.toString());
+        instructions.setMargin(new Insets(10, 10, 10, 10));
+        
+        // Make it scrollable
+        JScrollPane scrollPane = new JScrollPane(instructions);
+        scrollPane.setBorder(null);
+        scrollPane.setBackground(COL_BG);
+        scrollPane.getViewport().setBackground(COL_BG);
+        
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Close button
+        JButton closeBtn = styledButton("✖  CLOSE", COL_ACCENT2);
+        closeBtn.addActionListener(e -> SwingUtilities.getWindowAncestor(closeBtn).dispose());
+        
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setOpaque(false);
+        buttonPanel.setBorder(new EmptyBorder(10, 0, 0, 0));
+        buttonPanel.add(closeBtn);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        JDialog dialog = new JDialog(frame, "Cannonball Run — Instructions", true);
+        dialog.setContentPane(panel);
+        dialog.setSize(550, 550);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setResizable(false);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setVisible(true);
     }
 
     // ── Event Handlers ────────────────────────────────────────────────────────
