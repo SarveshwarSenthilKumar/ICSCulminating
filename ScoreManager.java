@@ -3,7 +3,16 @@
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
 
 class ScoreManager {
     private ScoreManager() {}
@@ -47,5 +56,79 @@ class ScoreManager {
             catch (NumberFormatException ex) { return 0; }
         });
         return list;
+    }
+
+    /**
+ * Displays personal best for the logged-in user in a styled dialog.
+ */
+    private void showPersonalBest(JFrame frame, String username) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(COL_BG);
+        panel.setBorder(new EmptyBorder(20, 30, 20, 30));
+        
+        JLabel titleLabel = neonLabel("═══ PERSONAL BEST ═══", 
+                                    new Font("Monospaced", Font.BOLD, 18), COL_ACCENT);
+        titleLabel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        
+        // Load user's personal best
+        int personalBest = 0;
+        java.util.List<String[]> scores = ScoreManager.loadAllScores(SCORES_FILE);
+        for (String[] entry : scores) {
+            if (entry[0].equals(username)) {
+                try {
+                    personalBest = Integer.parseInt(entry[1]);
+                    break;
+                } catch (NumberFormatException e) {
+                    personalBest = 0;
+                }
+            }
+        }
+        
+        JTextArea info = new JTextArea();
+        info.setEditable(false);
+        info.setBackground(COL_PANEL);
+        info.setForeground(COL_TEXT);
+        info.setFont(new Font("Monospaced", Font.BOLD, 16));
+        info.setBorder(BorderFactory.createLineBorder(COL_ACCENT, 1));
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("╔══════════════════════════════╗\n");
+        sb.append("║                              ║\n");
+        sb.append(String.format("║    PLAYER: %-15s║\n", username));
+        sb.append("║                              ║\n");
+        sb.append("╠══════════════════════════════╣\n");
+        sb.append(String.format("║    BEST SCORE: %-10s║\n", personalBest));
+        sb.append("║                              ║\n");
+        if (personalBest > 0) {
+            sb.append("║    🏆  KEEP RACING!  🏆     ║\n");
+        } else {
+            sb.append("║    🚗  PLAY TO SET  🚗     ║\n");
+            sb.append("║    YOUR FIRST SCORE!       ║\n");
+        }
+        sb.append("║                              ║\n");
+        sb.append("╚══════════════════════════════╝");
+        
+        info.setText(sb.toString());
+        info.setMargin(new Insets(15, 15, 15, 15));
+        
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(info, BorderLayout.CENTER);
+        
+        JButton closeBtn = styledButton("✖  CLOSE", COL_ACCENT2);
+        closeBtn.addActionListener(e -> SwingUtilities.getWindowAncestor(closeBtn).dispose());
+        
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setOpaque(false);
+        buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
+        buttonPanel.add(closeBtn);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        JDialog dialog = new JDialog(frame, "Personal Best", true);
+        dialog.setContentPane(panel);
+        dialog.setSize(400, 350);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setResizable(false);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setVisible(true);
     }
 }
