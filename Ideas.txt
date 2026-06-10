@@ -3,13 +3,15 @@ Add oncoming traffic - Done
 Update the speed of the opponents depending on own speed - Done
 Add traffic jams and add multiple cars on screen - Done
 Add a pause feature - Done
-Add a proper menu - implemented fix name and aesthetics
+Add a proper menu - Done
 Add score saving system - Done
 Add check high score feature
 Fix score saving system - Done
-Add music
+Add music - Added MusicPlayer but cannot import music
+Add button to view high scores at end page
+Add personal best to the end menu and normal screen
 Make sure collision detection works for same on oncoming side
-Add instructions of how to play to the menu
+Add instructions of how to play to the menu - Done
 Add distance counter
 Add bonus for time spent in oncoming traffic
 Add tilt when turning - Done
